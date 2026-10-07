@@ -124,26 +124,17 @@ const displayName = computed(() => {
   const account = accountStore.currentAccount
   const gameName = status.value?.status?.name
 
-  if (gameName) {
-    if (account?.name)
-      return `${gameName} (${account.name})`
+  if (gameName)
     return gameName
-  }
 
   if (currentAccountDisconnected.value) {
-    if (account) {
-      if (account.name && account.nick)
-        return `${account.nick} (${account.name})`
-      return account.name || account.nick || '未登录'
-    }
+    if (account)
+      return account.nick || account.name || '未登录'
     return '未登录'
   }
 
-  if (account) {
-    if (account.name && account.nick)
-      return `${account.nick} (${account.name})`
-    return account.name || account.nick || '未命名'
-  }
+  if (account)
+    return account.nick || account.name || '未命名'
 
   return '未命名'
 })
