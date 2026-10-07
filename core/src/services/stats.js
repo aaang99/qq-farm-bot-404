@@ -84,6 +84,7 @@ const session = {
 
 let currentAccountId = null;
 let saveTimer = null;
+let accountOnlineAt = null;
 
 // ─── 公开 API ───
 
@@ -197,6 +198,7 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
   session.couponGained = 0;
   session.lastExpGain = 0;
   session.lastGoldGain = 0;
+  accountOnlineAt = Date.now();
 
   // 尝试恢复今日持久化数据
   const persisted = loadPersistedStats(accountId);
@@ -328,7 +330,7 @@ function getStats(farmUser, userState, connected, limits) {
       openId: us.openId || fu.openId || fu.open_id || '',
       avatar: us.avatar || fu.avatar || fu.avatarUrl || fu.avatar_url || ''
     },
-    uptime: process.uptime(),
+    uptime: connected ? Math.max(1, Math.floor((Date.now() - (accountOnlineAt || Date.now())) / 1000)) : 0,
     operations: ops,
     tongQiGiftCount,
     tongQiGiftLimit: null,

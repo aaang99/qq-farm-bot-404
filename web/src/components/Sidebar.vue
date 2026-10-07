@@ -164,7 +164,7 @@ const hasActiveMysteryOffer = computed(() => {
   return !endMs || endMs > Date.now()
 })
 
-const version = __APP_VERSION__
+// const version = __APP_VERSION__
 
 watch(
   () => route.path,
@@ -174,7 +174,7 @@ watch(
   },
 )
 
-const showThemeDropdown = ref(false)
+// const showThemeDropdown = ref(false)
 </script>
 
 <template>
@@ -240,58 +240,9 @@ const showThemeDropdown = ref(false)
 
       <div class="mt-2.5 flex items-center justify-between border-t border-white/30 pt-2 text-xs opacity-85 dark:border-white/10" style="color: var(--theme-text);">
         <span class="font-mono text-[11px]">{{ formattedTime }}</span>
-        <!-- 主题调色盘按钮 -->
-        <button
-          class="palette-btn h-7 w-7 flex items-center justify-center rounded-xl transition-all"
-          title="主题设置"
-          @click="showThemeDropdown = !showThemeDropdown"
-        >
-          <div class="i-carbon-color-palette text-sm" :style="{ color: 'var(--theme-primary)' }" />
-        </button>
       </div>
 
-      <div class="mt-1.5 flex items-center justify-between text-[11px] font-mono opacity-55" style="color: var(--theme-text);">
-        <span>v{{ version }}</span>
-        <a
-          href="https://github.com/aaang99/qq-farm-bot-404"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="transition-opacity hover:opacity-100"
-          title="二改自 xxxscarlxrd404/qq-farm-bot"
-        >aaang99 (二改自 xxxscarlxrd404)</a>
       </div>
-
-      <!-- 主题选择弹出面板 -->
-      <div
-        v-show="showThemeDropdown"
-        class="glass-panel absolute bottom-full left-0 right-0 z-50 grid grid-cols-4 mb-2 gap-1.5 rounded-2xl p-2.5 shadow-2xl"
-      >
-        <button
-          v-for="(t, theme) in appStore.themes"
-          :key="theme"
-          class="group relative flex flex-col items-center justify-center gap-1 rounded-xl p-2 transition-all hover:scale-105"
-          :class="{
-            'ring-2 ring-offset-2': appStore.currentTheme === theme,
-          }"
-          :style="{
-            'background': t.gradient,
-            '--tw-ring-color': t.primary,
-            '--tw-ring-offset-color': 'var(--theme-bg)',
-          }"
-          :title="t.name"
-          @click="appStore.applyTheme(theme as any); showThemeDropdown = false"
-        >
-          <div :class="t.icon" class="text-base text-white" />
-          <span class="text-[10px] text-white font-medium leading-tight">{{ t.name }}</span>
-          <div
-            v-if="appStore.currentTheme === theme"
-            class="absolute right-1 top-1 h-3.5 w-3.5 flex items-center justify-center rounded-full bg-white shadow"
-          >
-            <div class="i-carbon-checkmark text-xs" :style="{ color: t.primary }" />
-          </div>
-        </button>
-      </div>
-    </div>
   </aside>
 </template>
 

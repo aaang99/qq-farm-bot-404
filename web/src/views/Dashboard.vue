@@ -602,149 +602,148 @@ useIntervalFn(updateCountdowns, 1000)
 
 <template>
   <div class="flex flex-col gap-5 pt-1 md:h-full md:min-h-0 md:overflow-hidden md:pt-2">
-    <div class="grid grid-cols-1 shrink-0 gap-4 lg:grid-cols-3 sm:grid-cols-2">
-      <div class="ui-card metric-card min-h-[168px] flex flex-col rounded-2xl p-5">
-        <div class="mb-2 flex items-start justify-between">
-          <div class="flex items-center gap-1.5 text-sm text-gray-500">
-            <div class="i-fas-user-circle" />
-            账号
+    <!-- 一体化全景控制台卡片（集成：身份、等级、经验、核心资产、物资、图鉴） -->
+    <div class="ui-card-elevated relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all shadow-md">
+      <!-- 顶部：身份、等级、在线状态与运行时长 -->
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100/70 pb-3 dark:border-gray-800/70">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="h-9 w-9 flex shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 font-bold text-base">
+            <div class="i-fas-user-circle text-xl" />
           </div>
-          <div class="rounded-lg bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-            Lv.{{ status?.status?.level || 0 }}
-          </div>
-        </div>
-        <div class="mb-1 truncate text-xl font-bold" :title="displayName">
-          {{ displayName }}
-        </div>
-        <div class="mt-auto">
-          <div class="mb-1 flex justify-between text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <div class="i-fas-bolt text-blue-400" />
-              <span>EXP</span>
-            </div>
-            <span>{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || '?' }}</span>
-          </div>
-          <div class="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
-            <div
-              class="h-full rounded-full bg-blue-500 transition-all duration-500"
-              :style="{ width: `${getExpPercent(status?.levelProgress)}%` }"
-            />
-          </div>
-          <div class="mt-2 flex justify-between text-xs text-gray-400">
-            <span>效率: {{ expRate }}</span>
-            <span>{{ timeToLevel }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="ui-card metric-card min-h-[168px] flex flex-col justify-between rounded-2xl p-5">
-        <div class="grid grid-cols-4 gap-3">
           <div class="min-w-0">
-            <div class="flex items-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/gold.png" alt="金币" class="h-5 w-5 shrink-0 object-contain">
-              金币
+            <div class="flex items-center gap-2">
+              <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
+                {{ displayName }}
+              </span>
+              <span class="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                Lv.{{ status?.status?.level || 0 }}
+              </span>
             </div>
-            <div class="text-2xl text-yellow-600 font-bold dark:text-yellow-500">
-              {{ formatGoldAmount(status?.status?.gold || 0) }}
-            </div>
-            <div
-              v-if="(status?.sessionGoldGained || 0) !== 0"
-              class="text-[10px]"
-              :class="(status?.sessionGoldGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
-            >
-              {{ (status?.sessionGoldGained || 0) > 0 ? '+' : '' }}{{ formatGoldAmount(status?.sessionGoldGained || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-center">
-            <div class="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/coupon.png" alt="点券" class="h-5 w-5 shrink-0 object-contain">
-              点券
-            </div>
-            <div class="text-2xl text-emerald-500 font-bold dark:text-emerald-400">
-              {{ formatCouponAmount(status?.status?.coupon || 0) }}
-            </div>
-            <div
-              v-if="(status?.sessionCouponGained || 0) !== 0"
-              class="text-[10px]"
-              :class="(status?.sessionCouponGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
-            >
-              {{ (status?.sessionCouponGained || 0) > 0 ? '+' : '' }}{{ formatCouponAmount(status?.sessionCouponGained || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-center">
-            <div class="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/diamond.png" alt="钻石" class="h-5 w-5 shrink-0 object-contain">
-              钻石
-            </div>
-            <div class="text-2xl text-cyan-600 font-bold dark:text-cyan-400">
-              {{ formatCouponAmount(status?.status?.diamond || 0) }}
-            </div>
-          </div>
-          <div class="min-w-0 text-right">
-            <div class="flex items-center justify-end gap-1.5 text-xs text-gray-500">
-              <img src="/game-config/resource-icons/gold-bean.png" alt="金豆豆" class="h-5 w-5 shrink-0 object-contain">
-              金豆
-            </div>
-            <div class="text-2xl text-amber-500 font-bold dark:text-amber-400">
-              {{ formatGoldBeanAmount(status?.status?.goldBean || 0) }}
+            <div class="flex items-center gap-2 text-xs text-gray-400">
+              <span>效率: {{ expRate }}</span>
+              <span v-if="timeToLevel">· {{ timeToLevel }}</span>
             </div>
           </div>
         </div>
-        <div class="mt-4 border-t border-gray-100/80 pt-3 dark:border-gray-700/80">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <div class="h-2.5 w-2.5 rounded-full" :class="status?.connection?.connected ? 'bg-green-500' : currentStatusReady ? 'bg-red-500' : 'bg-gray-300'" />
-              <span class="text-xs font-bold">{{ status?.connection?.connected ? '在线' : currentStatusReady ? '离线' : '检查中' }}</span>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs text-gray-400">
-              <div class="i-fas-clock text-purple-400" />
-              {{ formatDuration(localUptime) }}
-            </div>
+
+        <div class="flex items-center gap-3 shrink-0 ml-auto">
+          <div class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold" :class="status?.connection?.connected ? 'bg-green-100/80 text-green-700 dark:bg-green-900/30 dark:text-green-300' : currentStatusReady ? 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'">
+            <span class="h-2 w-2 rounded-full" :class="status?.connection?.connected ? 'bg-green-500 animate-pulse' : currentStatusReady ? 'bg-red-500' : 'bg-gray-400'" />
+            <span>{{ status?.connection?.connected ? '在线' : currentStatusReady ? '离线' : '检查中' }}</span>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-gray-400 font-mono">
+            <div class="i-fas-clock text-purple-400" />
+            {{ formatDuration(localUptime) }}
           </div>
         </div>
       </div>
 
-      <div class="ui-card metric-card min-h-[168px] flex flex-col justify-between rounded-2xl p-5">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/fertilizer-normal.png" alt="普通化肥" class="h-5 w-5 shrink-0 object-contain">
-              普通
-            </div>
-            <div class="font-bold">
-              {{ formatBucketTime(fertilizerNormal) }}
-            </div>
+      <!-- 经验条（极细进度条） -->
+      <div class="py-2.5">
+        <div class="mb-1 flex items-center justify-between text-xs text-gray-500 font-mono">
+          <span class="flex items-center gap-1">
+            <span class="i-fas-bolt text-amber-500" />
+            <span>经验 EXP</span>
+          </span>
+          <span>{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || '?' }}</span>
+        </div>
+        <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+          <div
+            class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
+            :style="{ width: `${getExpPercent(status?.levelProgress)}%` }"
+          />
+        </div>
+      </div>
+
+      <!-- 核心资产：4 宫格数据矩阵 -->
+      <div class="grid grid-cols-4 gap-2 py-2">
+        <div class="flex flex-col items-center justify-center rounded-xl bg-gray-50/70 py-2 dark:bg-gray-800/40">
+          <div class="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+            <img src="/game-config/resource-icons/gold.png" alt="金币" class="h-4 w-4 shrink-0 object-contain">
+            <span>金币</span>
           </div>
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/fertilizer-organic.png" alt="有机化肥" class="h-5 w-5 shrink-0 object-contain">
-              有机
-            </div>
-            <div class="font-bold">
-              {{ formatBucketTime(fertilizerOrganic) }}
-            </div>
+          <div class="text-base font-bold sm:text-lg text-yellow-600 dark:text-yellow-500 truncate max-w-full px-1">
+            {{ formatGoldAmount(status?.status?.gold || 0) }}
+          </div>
+          <div
+            v-if="(status?.sessionGoldGained || 0) !== 0"
+            class="text-[10px] font-mono leading-none"
+            :class="(status?.sessionGoldGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
+          >
+            {{ (status?.sessionGoldGained || 0) > 0 ? '+' : '' }}{{ formatGoldAmount(status?.sessionGoldGained || 0) }}
           </div>
         </div>
-        <div class="my-3 border-t border-gray-100/80 dark:border-gray-700/80" />
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/illustrated-crop.png" alt="作物图鉴" class="h-6 w-6 shrink-0 object-contain">
-              作物图鉴
-            </div>
-            <div class="font-bold">
-              Lv.{{ illustratedLevels.crop }}
-            </div>
+
+        <div class="flex flex-col items-center justify-center rounded-xl bg-gray-50/70 py-2 dark:bg-gray-800/40">
+          <div class="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+            <img src="/game-config/resource-icons/coupon.png" alt="点券" class="h-4 w-4 shrink-0 object-contain">
+            <span>点券</span>
           </div>
-          <div>
-            <div class="flex items-center gap-1 text-xs text-gray-400">
-              <img src="/game-config/resource-icons/illustrated-mutant.png" alt="超变图鉴" class="h-6 w-6 shrink-0 object-contain">
-              超变图鉴
-            </div>
-            <div class="font-bold">
-              Lv.{{ illustratedLevels.mutant }}
-            </div>
+          <div class="text-base font-bold sm:text-lg text-emerald-500 dark:text-emerald-400 truncate max-w-full px-1">
+            {{ formatCouponAmount(status?.status?.coupon || 0) }}
           </div>
+          <div
+            v-if="(status?.sessionCouponGained || 0) !== 0"
+            class="text-[10px] font-mono leading-none"
+            :class="(status?.sessionCouponGained || 0) > 0 ? 'text-green-500' : 'text-red-500'"
+          >
+            {{ (status?.sessionCouponGained || 0) > 0 ? '+' : '' }}{{ formatCouponAmount(status?.sessionCouponGained || 0) }}
+          </div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center rounded-xl bg-gray-50/70 py-2 dark:bg-gray-800/40">
+          <div class="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+            <img src="/game-config/resource-icons/diamond.png" alt="钻石" class="h-4 w-4 shrink-0 object-contain">
+            <span>钻石</span>
+          </div>
+          <div class="text-base font-bold sm:text-lg text-cyan-600 dark:text-cyan-400 truncate max-w-full px-1">
+            {{ formatCouponAmount(status?.status?.diamond || 0) }}
+          </div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center rounded-xl bg-gray-50/70 py-2 dark:bg-gray-800/40">
+          <div class="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+            <img src="/game-config/resource-icons/gold-bean.png" alt="金豆" class="h-4 w-4 shrink-0 object-contain">
+            <span>金豆</span>
+          </div>
+          <div class="text-base font-bold sm:text-lg text-amber-500 dark:text-amber-400 truncate max-w-full px-1">
+            {{ formatGoldBeanAmount(status?.status?.goldBean || 0) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 辅助物资与图鉴（紧凑胶囊通栏：普通肥、作物图鉴、有机肥、超变图鉴） -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-gray-100/70 dark:border-gray-800/70">
+        <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <img src="/game-config/resource-icons/fertilizer-normal.png" alt="普通化肥" class="h-4 w-4 shrink-0 object-contain">
+            <span>普通肥</span>
+          </div>
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ formatBucketTime(fertilizerNormal) }}</span>
+        </div>
+
+        <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <img src="/game-config/resource-icons/illustrated-crop.png" alt="作物图鉴" class="h-4 w-4 shrink-0 object-contain">
+            <span>作物图鉴</span>
+          </div>
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-200">Lv.{{ illustratedLevels.crop }}</span>
+        </div>
+
+        <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <img src="/game-config/resource-icons/fertilizer-organic.png" alt="有机化肥" class="h-4 w-4 shrink-0 object-contain">
+            <span>有机肥</span>
+          </div>
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ formatBucketTime(fertilizerOrganic) }}</span>
+        </div>
+
+        <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
+          <div class="flex items-center gap-1.5 text-xs text-gray-500">
+            <img src="/game-config/resource-icons/illustrated-mutant.png" alt="超变图鉴" class="h-4 w-4 shrink-0 object-contain">
+            <span>超变图鉴</span>
+          </div>
+          <span class="text-xs font-bold text-gray-700 dark:text-gray-200">Lv.{{ illustratedLevels.mutant }}</span>
         </div>
       </div>
     </div>
