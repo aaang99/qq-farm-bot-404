@@ -4,6 +4,7 @@ import { useIntervalFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import api from '@/api'
+import AccountCareerModal from '@/components/AccountCareerModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -598,6 +599,72 @@ onMounted(async () => {
 useIntervalFn(refresh, 10000)
 // Countdown timer (every 1s)
 useIntervalFn(updateCountdowns, 1000)
+
+const showCareerModal = ref(false)
+const careerLoading = ref(false)
+const careerError = ref('')
+const careerItems = ref<any[]>([])
+const careerProfile = ref<Record<string, any>>({})
+const avatarLoadFailed = ref(false)
+
+function liveAccountAvatar() {
+  if (!currentStatusReady.value)
+    return ''
+  return String(
+    status.value?.status?.avatar
+    || status.value?.status?.avatarUrl
+    || status.value?.status?.avatar_url
+    || '',
+  ).trim()
+}
+
+const currentAvatar = computed(() => {
+  const acc = currentAccount.value
+  if (!acc)
+    return '/default-user-avatar.png'
+  const explicit = liveAccountAvatar() || String(acc.avatar || '').trim()
+  if (explicit)
+    return explicit
+  const qq = String(acc.uin || acc.qq || '').trim()
+  if (qq && /^\d+$/.test(qq))
+    return `https://q1.qlogo.cn/g?b=qq&nk=${qq}&s=100`
+  return '/default-user-avatar.png'
+})
+
+watch(() => currentAccountId.value, () => {
+  avatarLoadFailed.value = false
+})
+
+async function loadCareer() {
+  const accountId = String(currentAccountId.value || '').trim()
+  if (!accountId)
+    return
+  careerLoading.value = true
+  careerError.value = ''
+  try {
+    const { data } = await api.get('/api/career', {
+      headers: { 'x-account-id': accountId },
+    })
+    if (!data?.ok)
+      throw new Error(data?.error || '生涯记录读取失败')
+    careerProfile.value = data.data || {}
+    careerItems.value = data.data?.items || []
+  }
+  catch (error: any) {
+    careerError.value = error?.response?.data?.error || error?.message || '生涯记录读取失败'
+  }
+  finally {
+    careerLoading.value = false
+  }
+}
+
+function openCareer() {
+  if (!currentAccount.value)
+    return
+  showCareerModal.value = true
+  loadCareer()
+}
+
 </script>
 
 <template>
@@ -607,8 +674,24 @@ useIntervalFn(updateCountdowns, 1000)
       <!-- 顶部：身份、等级、在线状态与运行时长 -->
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100/70 pb-3 dark:border-gray-800/70">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="h-9 w-9 flex shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 font-bold text-base">
-            <div class="i-fas-user-circle text-xl" />
+          <div
+            class="relative h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
+            title="查看个人生涯记录"
+            @click="openCareer"
+          >
+            <img
+              v-if="!avatarLoadFailed"
+              :src="currentAvatar"
+              :alt="displayName"
+              class="h-full w-full object-cover"
+              @error="avatarLoadFailed = true"
+            >
+            <div
+              v-else
+              class="h-full w-full flex items-center justify-center bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 font-bold text-sm"
+            >
+              {{ displayName.slice(0, 1) }}
+            </div>
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-2">
@@ -953,5 +1036,18 @@ useIntervalFn(updateCountdowns, 1000)
         </div>
       </div>
     </div>
+  
+    <Teleport to="body">
+      <AccountCareerModal
+        :show="showCareerModal"
+        :account="currentAccount"
+        :profile="careerProfile"
+        :items="careerItems"
+        :loading="careerLoading"
+        :error="careerError"
+        @close="showCareerModal = false"
+        @refresh="loadCareer"
+      />
+    </Teleport>
   </div>
 </template>

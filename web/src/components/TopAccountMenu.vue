@@ -156,6 +156,7 @@ async function loadCareer() {
   }
 }
 
+/*
 function openCareer(event: MouseEvent) {
   event.stopPropagation()
   if (!currentAccount.value)
@@ -164,6 +165,7 @@ function openCareer(event: MouseEvent) {
   showCareerModal.value = true
   loadCareer()
 }
+*/
 
 const displayName = computed(() => accountDisplayName(currentAccount.value))
 const currentAvatarSrc = computed(() => avatarSource(currentAccount.value))
@@ -244,7 +246,7 @@ async function handleAccountSaved() {
       <div class="relative h-8 w-8 flex-none">
         <div
           class="h-full w-full flex items-center justify-center overflow-hidden rounded-full cursor-pointer ring-2 ring-white/90 shadow-sm transition-transform duration-200 hover:scale-105"
-          @click.stop="openCareer"
+          
         >
           <img
             v-if="shouldShowAvatar(currentAccount)"
