@@ -57,7 +57,7 @@
 
 ```bash
 git clone https://github.com/aaang99/qq-farm-bot-404.git
-cd qq-farm-bot
+cd qq-farm-bot-404
 
 corepack enable
 pnpm install
@@ -77,7 +77,7 @@ pnpm dev:web
 
 ```bash
 git clone https://github.com/aaang99/qq-farm-bot-404.git
-cd qq-farm-bot
+cd qq-farm-bot-404
 docker compose up -d --build
 ```
 
@@ -101,7 +101,7 @@ docker compose up -d --build
 | --- | --- |
 | Web 管理面板 | `3007` |
 | 抓包代理端口 | `18000` |
-| 持久化数据 | 仓库上级目录的 `data/` |
+| 持久化数据 | 项目根目录下的 `data/` |
 
 源码运行、Docker 和二进制发布版的抓包服务均默认关闭；只有在
 “系统配置 → Code/GID 抓取服务”中开启后才会启动，并且只使用代理端口 `18000`。
