@@ -42,7 +42,7 @@ body {
 
 /* Color theme variables & Liquid Glass Design System */
 :root {
-  --app-bg-image: url('/bg-desktop.png');
+  --app-bg-image: url('/bg-desktop.webp');
   --theme-bg: #f8fafc;
   --theme-text: #1e293b;
   --theme-primary: #3b82f6;
@@ -73,7 +73,7 @@ body {
 
 @media (max-width: 768px) {
   :root {
-    --app-bg-image: url('/bg-mobile.png');
+    --app-bg-image: url('/bg-mobile.webp');
   }
 }
 

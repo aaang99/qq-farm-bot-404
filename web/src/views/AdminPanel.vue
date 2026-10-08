@@ -729,10 +729,15 @@ async function saveSystemSettings() {
   }
 }
 
+watch(activeTab, (newTab) => {
+  if (newTab === 'card') fetchCards()
+  else if (newTab === 'user') fetchUsers()
+})
+
 onMounted(async () => {
   document.addEventListener('click', closeExportMenu)
-  if (activeTab.value === 'card') fetchCards()
-  if (activeTab.value === 'user') fetchUsers()
+  if (activeTab.value === 'card') await fetchCards()
+  else if (activeTab.value === 'user') await fetchUsers()
   fetchCardClaimStatus()
   await Promise.all([loadSystemConfig(), loadCaptureConfig(), fetchDeviceProtocol()])
 })
@@ -743,31 +748,40 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="admin-panel p-3 sm:p-4 md:p-6">
-    <!-- 标题 + Tab 合并固定，毛玻璃圆角 -->
-    <div class="sticky top-0 z-20 rounded-b-xl border-b border-gray-200/50 bg-white/70 p-3 backdrop-blur-lg dark:border-gray-700/50 dark:bg-gray-900/70 sm:p-4">
-      <h1 class="mb-2 flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-gray-100 sm:mb-3 sm:text-2xl">
-        <div class="i-fas-user-shield text-base sm:text-lg" />
-        后台管理
-      </h1>
-      <nav class="flex flex-wrap gap-1.5 sm:gap-1">
+  <div class="admin-panel w-full space-y-3 sm:space-y-4">
+    <!-- 标题 + Tab 液态玻璃通栏面板 -->
+    <div class="ui-card-elevated relative overflow-hidden rounded-2xl p-4 sm:p-5 shadow-sm transition-all">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3 border-b border-gray-100/70 pb-3 dark:border-gray-800/70">
+        <div class="flex items-center gap-2.5">
+          <div class="h-9 w-9 flex shrink-0 items-center justify-center rounded-xl bg-purple-500/15 text-purple-600 dark:bg-purple-400/20 dark:text-purple-300 font-bold text-base shadow-sm ring-1 ring-white/80">
+            <div class="i-carbon-security text-xl" />
+          </div>
+          <div>
+            <h1 class="text-base font-bold text-gray-900 dark:text-gray-100 sm:text-xl">
+              后台管理系统
+            </h1>
+            <p class="text-xs text-gray-400 mt-0.5">卡密分发、用户额度与底层网关配置</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="flex gap-2 p-1 rounded-xl bg-gray-100/60 dark:bg-gray-800/50 backdrop-blur-md mb-4">
         <button
           v-for="tab in tabs"
           :key="tab.key"
-          class="flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap transition-all sm:gap-1.5 sm:border-0 sm:px-4 sm:py-2 sm:text-sm"
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs sm:text-sm font-semibold transition-all duration-200"
           :class="activeTab === tab.key
-            ? 'border-blue-500 bg-blue-500 text-white shadow-md sm:border-transparent'
-            : 'border-gray-200 bg-white/80 text-gray-600 hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-600 dark:bg-gray-800/80 dark:text-gray-400 dark:hover:border-blue-600 dark:hover:bg-gray-700 sm:border-transparent sm:bg-transparent sm:shadow-none'"
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400'
+            : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'"
           @click="activeTab = tab.key"
         >
-          <div :class="tab.icon" class="text-xs sm:text-base" />
-          {{ tab.label }}
+          <div :class="tab.icon" class="text-sm sm:text-base" />
+          <span>{{ tab.label }}</span>
         </button>
       </nav>
-    </div>
 
-    <div class="mt-3 sm:mt-4">
-      <div class="p-4">
+      <!-- 一体化内容区（无断开，共享顶部毛玻璃卡片） -->
+      <div class="w-full border-t border-gray-100/70 pt-4 dark:border-gray-800/70">
         <!-- 卡密管理 -->
         <div v-if="activeTab === 'card'" class="space-y-4">
           <div class="flex items-center justify-between">
@@ -953,7 +967,7 @@ onUnmounted(() => {
             <div>加载中...</div>
           </div>
 
-          <div v-else class="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
+          <div v-else class="overflow-hidden rounded-xl border border-gray-100/80 bg-white/40 backdrop-blur-sm dark:border-gray-800/80 dark:bg-gray-800/30">
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700">
@@ -1177,7 +1191,7 @@ onUnmounted(() => {
             <div>加载中...</div>
           </div>
 
-          <div v-else class="overflow-hidden border border-gray-200 rounded-lg dark:border-gray-700">
+          <div v-else class="overflow-hidden rounded-xl border border-gray-100/80 bg-white/40 backdrop-blur-sm dark:border-gray-800/80 dark:bg-gray-800/30">
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-700">

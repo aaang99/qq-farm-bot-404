@@ -166,11 +166,11 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     <!-- Custom Farm Logo -->
     <div class="logo-box">
       <img
-        src="/qq-farm-logo.png"
+        src="/qq-farm-logo.webp"
         alt="QQ经典农场"
         class="login-logo-img drop-shadow-[0_8px_20px_rgba(0,0,0,0.18)]"
       >
-      <p class="tag mt-2">全自动智能托管 · 液态视觉系统</p>
+      <p class="tag mt-2">全自动智能托管 · 科技助农</p>
     </div>
 
     <div class="tabs">
@@ -181,14 +181,22 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     <form class="fm" @submit.prevent="handleSubmit">
       <div class="fld">
         <div class="inp">
-          <span class="inp-ico"><div class="i-carbon-user" /></span>
+          <span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+          </span>
           <input v-model="username" type="text" placeholder="用户名" autocomplete="username">
         </div>
         <span v-if="username && !usernameValid.valid" class="input-hint">{{ usernameValid.message }}</span>
       </div>
       <div class="fld">
         <div class="inp">
-          <span class="inp-ico"><div class="i-carbon-locked" /></span>
+          <span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+          </span>
           <input v-model="password" type="password" placeholder="密码" autocomplete="current-password">
         </div>
         <div v-if="showPasswordStrength && password" class="pwd">
@@ -198,7 +206,11 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
       </div>
       <div v-if="!isLogin" class="fld">
         <div class="inp">
-          <span class="inp-ico"><div class="i-carbon-license" /></span>
+          <span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+            </svg>
+          </span>
           <input v-model="cardCode" type="text" placeholder="卡密">
         </div>
         <button v-if="cardClaimEnabled" type="button" class="gift" :disabled="cardClaimLoading" @click="claimFreeCard">
@@ -240,8 +252,16 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     <div v-if="showResetModal" class="md-bg" @click.self="closeResetModal"><div class="md-box">
       <div class="md-ico md-ok"><div class="i-carbon-password text-2xl" /></div>
       <h3>找回密码</h3><p>请输入账号和注册卡密进行验证</p>
-      <div class="fld"><div class="inp"><span class="inp-ico"><div class="i-carbon-user" /></span><input v-model="resetUsername" placeholder="用户名"></div></div>
-      <div class="fld" style="margin-top:14px"><div class="inp"><span class="inp-ico"><div class="i-carbon-license" /></span><input v-model="resetCardCode" placeholder="卡密"></div></div>
+      <div class="fld"><div class="inp"><span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+          </span><input v-model="resetUsername" placeholder="用户名"></div></div>
+      <div class="fld" style="margin-top:14px"><div class="inp"><span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+            </svg>
+          </span><input v-model="resetCardCode" placeholder="卡密"></div></div>
       <div v-if="resetError" class="nt nt-err" style="margin-top:12px"><span class="i-carbon-warning-alt" />{{ resetError }}</div>
       <div class="md-acts"><button class="md-cancel" @click="closeResetModal">取消</button><button class="md-confirm" :disabled="resetVerifying" @click="handleResetVerify"><span v-if="resetVerifying" class="i-svg-spinners-90-ring-with-bg text-xs" /><span v-else>验证</span></button></div>
     </div></div>
@@ -251,9 +271,17 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     <div v-if="showResetPasswordModal" class="md-bg" @click.self="closeResetPasswordModal"><div class="md-box">
       <div class="md-ico md-ok"><div class="i-carbon-security text-2xl" /></div>
       <h3>设置新密码</h3><p>验证通过，请设置新密码</p>
-      <div class="fld"><div class="inp"><span class="inp-ico"><div class="i-carbon-locked" /></span><input v-model="resetNewPassword" type="password" placeholder="新密码"></div></div>
+      <div class="fld"><div class="inp"><span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+          </span><input v-model="resetNewPassword" type="password" placeholder="新密码"></div></div>
       <div v-if="showResetPasswordStrength && resetNewPassword" class="pwd" style="margin-top:6px"><span class="pwd-bar"><i :style="{ width: Math.min(resetPasswordStrength.score * 12.5, 100) + '%', background: resetPasswordStrength.color }" /></span><small :style="{ color: resetPasswordStrength.color }">{{ resetPasswordStrength.level }}</small></div>
-      <div class="fld" style="margin-top:14px"><div class="inp"><span class="inp-ico"><div class="i-carbon-locked" /></span><input v-model="resetConfirmPassword" type="password" placeholder="确认密码"></div></div>
+      <div class="fld" style="margin-top:14px"><div class="inp"><span class="inp-ico">
+            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+          </span><input v-model="resetConfirmPassword" type="password" placeholder="确认密码"></div></div>
       <div v-if="resetPasswordError" class="nt nt-err" style="margin-top:12px"><span class="i-carbon-warning-alt" />{{ resetPasswordError }}</div>
       <div class="md-acts"><button class="md-cancel" @click="closeResetPasswordModal">取消</button><button class="md-confirm" :disabled="resetPasswordLoading" @click="handleResetPassword"><span v-if="resetPasswordLoading" class="i-svg-spinners-90-ring-with-bg text-xs" /><span v-else>确认修改</span></button></div>
     </div></div>
@@ -270,7 +298,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
   position: relative;
   overflow: hidden;
   padding: 24px;
-  background-image: url('/bg-desktop.png');
+  background-image: url('/bg-desktop.webp');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -279,7 +307,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
 
 @media (max-width: 768px) {
   .pg {
-    background-image: url('/bg-mobile.png');
+    background-image: url('/bg-mobile.webp');
   }
 }
 
@@ -400,12 +428,18 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
 
 .inp-ico {
   position: absolute;
-  left: 15px;
-  color: #64748b;
-  font-size: 1.05rem;
+  left: 10px;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.12);
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
   pointer-events: none;
   display: flex;
-  transition: color 0.25s;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 2px 6px rgba(37, 99, 235, 0.15);
 }
 
 .inp input {
@@ -435,7 +469,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     0 8px 24px rgba(59, 130, 246, 0.12);
 }
 
-.inp:focus-within .inp-ico { color: #2563eb; }
+.inp:focus-within .inp-ico { color: #ffffff; background: linear-gradient(135deg, #3b82f6, #2563eb); transform: scale(1.06); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
 
 .input-hint { font-size: 0.74rem; color: #ef4444; padding-left: 6px; font-weight: 500; }
 

@@ -2,8 +2,6 @@
 import { useSidebarUser } from './useSidebarUser'
 
 const { userStore, handleLogout } = useSidebarUser()
-
-const defaultAvatar = '/default-user-avatar.png'
 </script>
 
 <template>
@@ -13,13 +11,9 @@ const defaultAvatar = '/default-user-avatar.png'
   >
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 min-w-0">
-        <!-- 用户头像 -->
-        <div class="relative h-9 w-9 flex shrink-0 items-center justify-center overflow-hidden rounded-xl ring-1 ring-white/80 shadow-md">
-          <img
-            :src="userStore.avatar || defaultAvatar"
-            :alt="userStore.username"
-            class="h-full w-full object-cover"
-          >
+        <!-- 机器人矢量图标替代大图，极速无白屏渲染 -->
+        <div class="relative h-9 w-9 flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/15 to-indigo-500/20 text-blue-600 dark:text-blue-400 ring-1 ring-white/80 shadow-sm">
+          <div class="i-carbon-bot text-xl" />
         </div>
 
         <div class="min-w-0 flex-1">

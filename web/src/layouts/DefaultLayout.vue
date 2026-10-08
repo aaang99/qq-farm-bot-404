@@ -49,7 +49,7 @@ onUnmounted(() => {
         <!-- 仅移动端绝对居中显示的 Logo，PC端隐藏（右侧数据看板区域不显示 Logo） -->
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center z-20 lg:hidden">
           <img
-            src="/qq-farm-logo.png"
+            src="/qq-farm-logo.webp"
             :alt="`${loginPageConfig.title || 'QQ经典农场'}`"
             class="h-11 w-auto max-w-[190px] object-contain drop-shadow-[0_4px_14px_rgba(0,0,0,0.15)] transition-transform duration-300 pointer-events-auto"
           >

@@ -186,7 +186,7 @@ watch(
     <div class="relative h-24 flex flex-none items-center justify-center px-2 pt-2 pb-2">
       <div class="w-full flex items-center justify-center relative">
         <img
-          src="/qq-farm-logo.png"
+          src="/qq-farm-logo.webp"
           :alt="`${loginPageConfig.title || 'QQ经典农场'}`"
           class="h-16 w-auto max-w-[225px] object-contain drop-shadow-[0_4px_16px_rgba(0,0,0,0.18)] transition-transform duration-300 hover:scale-105"
         >

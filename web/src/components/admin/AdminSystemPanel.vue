@@ -41,7 +41,7 @@ const localCaptureConfig = defineModel<CaptureConfig>('localCaptureConfig', { re
       {{ props.section === 'system' ? '系统配置' : '抓包服务' }}
     </h3>
 
-    <div v-if="props.section === 'system'" class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-gray-900/40 dark:text-gray-300">
+    <div v-if="props.section === 'system'" class="rounded-xl bg-gray-50/70 p-3.5 text-xs text-gray-500 dark:bg-gray-800/40 border border-gray-100/60 dark:border-gray-800/60 leading-relaxed">
       修改后会直接影响全局连接参数与微信登录行为，保存前建议再次核对目标环境。
     </div>
 
