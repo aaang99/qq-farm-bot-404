@@ -17,6 +17,13 @@ export const menuRoutes: MenuItem[] = [
     component: () => import('@/views/Dashboard.vue'),
   },
   {
+    path: 'settings',
+    name: 'Settings',
+    label: '账号',
+    icon: 'i-carbon-user-settings',
+    component: () => import('@/views/Settings.vue'),
+  },
+  {
     path: 'personal',
     name: 'personal',
     label: '个人',
@@ -64,13 +71,6 @@ export const menuRoutes: MenuItem[] = [
     label: '分析',
     icon: 'i-carbon-analytics',
     component: () => import('@/views/Analytics.vue'),
-  },
-  {
-    path: 'settings',
-    name: 'Settings',
-    label: '设置',
-    icon: 'i-carbon-settings',
-    component: () => import('@/views/Settings.vue'),
   },
   {
     path: 'admin',

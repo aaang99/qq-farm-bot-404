@@ -547,8 +547,9 @@ watch(activeTab, (tab) => {
 </script>
 
 <template>
-  <div v-if="show" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-    <div class="max-h-[90vh] max-w-md w-full overflow-hidden rounded-lg shadow-xl" :style="{ background: 'var(--theme-bg)' }">
+  <Teleport to="body">
+    <div v-if="show" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm">
+      <div class="max-h-[85vh] max-w-md w-full flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-white/60 dark:border-white/10" :style="{ background: 'var(--theme-bg)' }">
       <div class="flex items-center justify-between border-b p-4" :style="{ borderColor: 'color-mix(in srgb, var(--theme-text) 10%, transparent)' }">
         <h3 class="text-lg font-semibold" :style="{ color: 'var(--theme-text)' }">
           {{ editData ? '编辑账号' : '添加账号' }}
@@ -1024,7 +1025,8 @@ watch(activeTab, (tab) => {
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
-  </div>
+  </Teleport>
 </template>

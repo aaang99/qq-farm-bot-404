@@ -213,6 +213,7 @@ watch(
         :active-class="item.path === '/' ? '' : 'router-link-active'"
         :exact-active-class="item.path === '/' ? 'router-link-active' : 'router-link-exact-active'"
         class="liquid-nav-btn group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-all duration-200"
+        @click="appStore.closeSidebar"
       >
         <span class="nav-icon-box h-9 w-9 flex flex-none items-center justify-center rounded-xl text-[20px] transition-all duration-200">
           <div :class="[item.icon]" />

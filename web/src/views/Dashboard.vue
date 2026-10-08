@@ -139,35 +139,10 @@ const displayName = computed(() => {
   return '未命名'
 })
 
-const expRate = computed(() => {
-  const gain = status.value?.sessionExpGained || 0
-  const uptime = status.value?.uptime || 0
-  if (!uptime)
-    return '0/小时'
-  const rate = gain / (uptime / 3600)
-  return `${Math.floor(rate)}/小时`
-})
-
-const timeToLevel = computed(() => {
-  const gain = status.value?.sessionExpGained || 0
-  const uptime = status.value?.uptime || 0
-  const current = status.value?.levelProgress?.current || 0
-  const needed = status.value?.levelProgress?.needed || 0
-
-  if (!needed || !uptime || gain <= 0)
-    return ''
-
-  const ratePerHour = gain / (uptime / 3600)
-  if (ratePerHour <= 0)
-    return ''
-
-  const expNeeded = Math.max(0, needed - current)
-  const minsToLevel = expNeeded / (ratePerHour / 60)
-
-  if (minsToLevel < 60)
-    return `约 ${Math.ceil(minsToLevel)} 分钟后升级`
-  return `约 ${(minsToLevel / 60).toFixed(1)} 小时后升级`
-})
+/*
+const expRate = computed(() => '0/小时')
+const timeToLevel = computed(() => '')
+*/
 
 const fertilizerNormal = computed(() => dashboardItems.value.find((item: any) => Number(item.id) === 1011))
 const fertilizerOrganic = computed(() => dashboardItems.value.find((item: any) => Number(item.id) === 1012))
@@ -664,7 +639,7 @@ function openCareer() {
     <!-- 一体化全景控制台卡片（集成：身份、等级、经验、核心资产、物资、图鉴） -->
     <div class="ui-card-elevated relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all shadow-md">
       <!-- 顶部：身份、等级、在线状态与运行时长 -->
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100/70 pb-3 dark:border-gray-800/70">
+      <div class="flex items-center justify-between gap-2 border-b border-gray-100/70 pb-2.5 dark:border-gray-800/70">
         <div class="flex items-center gap-2.5 min-w-0">
           <div
             class="relative h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
@@ -685,43 +660,41 @@ function openCareer() {
               {{ displayName.slice(0, 1) }}
             </div>
           </div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
-                {{ displayName }}
-              </span>
-              <span class="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                Lv.{{ status?.status?.level || 0 }}
-              </span>
-            </div>
-            <div class="flex items-center gap-2 text-xs text-gray-400">
-              <span>效率: {{ expRate }}</span>
-              <span v-if="timeToLevel">· {{ timeToLevel }}</span>
-            </div>
+          <div class="min-w-0 flex items-center gap-2">
+            <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
+              {{ displayName }}
+            </span>
+            <span class="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+              Lv.{{ status?.status?.level || 0 }}
+            </span>
           </div>
         </div>
 
-        <div class="flex items-center gap-3 shrink-0 ml-auto">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
           <div class="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold" :class="status?.connection?.connected ? 'bg-green-100/80 text-green-700 dark:bg-green-900/30 dark:text-green-300' : currentStatusReady ? 'bg-red-100/80 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'">
             <span class="h-2 w-2 rounded-full" :class="status?.connection?.connected ? 'bg-green-500 animate-pulse' : currentStatusReady ? 'bg-red-500' : 'bg-gray-400'" />
             <span>{{ status?.connection?.connected ? '在线' : currentStatusReady ? '离线' : '检查中' }}</span>
           </div>
           <div class="flex items-center gap-1 text-xs text-gray-400 font-mono">
             <div class="i-fas-clock text-purple-400" />
-            {{ formatDuration(localUptime) }}
+            <span>{{ formatDuration(localUptime) }}</span>
           </div>
         </div>
       </div>
 
-      <!-- 经验条（极细进度条） -->
-      <div class="py-2.5">
-        <div class="mb-1 flex items-center justify-between text-xs text-gray-500 font-mono">
+      <!-- 经验条（纯粹极简布局：左侧标识，右侧数值） -->
+      <div class="py-2">
+        <div class="mb-1.5 flex items-center justify-between text-xs text-gray-500 font-mono">
           <span class="flex items-center gap-1">
-            <span class="i-fas-bolt text-amber-500" />
-            <span>经验 EXP</span>
+            <span class="i-fas-bolt text-amber-500 text-[11px]" />
+            <span class="font-semibold text-gray-600 dark:text-gray-300">经验 EXP</span>
           </span>
-          <span>{{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || '?' }}</span>
+
+          <span class="font-medium text-gray-600 dark:text-gray-300">
+            {{ status?.levelProgress?.current || 0 }} / {{ status?.levelProgress?.needed || '?' }}
+          </span>
         </div>
+
         <div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
           <div
             class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"

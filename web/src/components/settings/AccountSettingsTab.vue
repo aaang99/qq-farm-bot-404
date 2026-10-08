@@ -32,6 +32,7 @@ const emit = defineEmits<{
   select: [account: any]
   toggle: [account: any]
   settings: [account: any]
+  notification: [account: any]
   setDefaultPlan: [account: any]
   applyDefaultPlan: [account: any]
   edit: [account: any]
@@ -132,20 +133,21 @@ function accountAvatar(acc: any) {
           : {}"
         @click="emit('select', acc)"
       >
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div class="min-w-0 flex flex-1 items-center gap-3">
-            <div class="h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 sm:h-12 sm:w-12 dark:bg-gray-700">
+        <div class="flex items-center justify-between gap-2.5">
+          <!-- 左侧：头像 + 真实昵称 + 平台 -->
+          <div class="min-w-0 flex items-center gap-2.5 flex-1">
+            <div class="h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
               <img v-if="accountAvatar(acc)" :src="accountAvatar(acc)" class="h-full w-full object-cover">
-              <div v-else class="i-carbon-user text-xl text-gray-400 sm:text-2xl" />
+              <div v-else class="i-carbon-user text-xl text-gray-400" />
             </div>
             <div class="min-w-0 flex-1">
-              <h4 class="truncate text-base font-bold sm:text-lg">
-                {{ acc.name || acc.nick || acc.id }}
+              <h4 class="truncate text-base font-bold">
+                {{ acc.nick || acc.name || acc.id }}
               </h4>
-              <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <div class="mt-0.5 flex items-center gap-1.5">
                 <span
                   v-if="acc.platform"
-                  class="rounded px-1.5 py-0.5 text-[10px] font-medium leading-tight"
+                  class="rounded px-1.5 py-0.2 text-[10px] font-medium leading-tight"
                   :class="getPlatformClass(acc.platform)"
                 >
                   {{ getPlatformLabel(acc.platform) }}
@@ -153,97 +155,77 @@ function accountAvatar(acc: any) {
               </div>
             </div>
           </div>
-          <div class="flex items-center justify-end gap-2 sm:flex-col sm:items-end">
-            <span class="flex items-center gap-1 text-xs text-gray-500 sm:hidden">
-              <div class="h-2 w-2 rounded-full" :class="acc.running ? 'bg-green-500' : 'bg-gray-300'" />
-              {{ acc.running ? '运行中' : '已停止' }}
+
+          <!-- 右侧：状态指示与启动/停止按钮（高度上移与头像完全齐平） -->
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="flex items-center gap-1.5 text-xs text-gray-500 font-medium">
+              <div class="h-2 w-2 rounded-full" :class="acc.running ? 'bg-green-500 animate-pulse' : 'bg-gray-300'" />
+              <span>{{ acc.running ? '运行中' : '已停止' }}</span>
             </span>
             <BaseButton
               variant="secondary"
               size="sm"
-              class="border rounded-full shadow-sm transition-all duration-500 ease-in-out sm:w-20 active:scale-95"
-              :class="acc.running ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-500 active:border-red-300 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 dark:focus:ring-red-500 dark:active:border-red-700' : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-100 focus:ring-green-500 active:border-green-300 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 dark:focus:ring-green-500 dark:active:border-green-700'"
+              class="border rounded-full shadow-sm transition-all duration-300 ease-in-out px-3 py-1 text-xs active:scale-95"
+              :class="acc.running ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-500 active:border-red-300 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400' : 'border-green-200 bg-green-50 text-green-600 hover:bg-green-100 focus:ring-green-500 active:border-green-300 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400'"
               :disabled="!acc.running && isAccountOpsDisabled"
               :title="!acc.running && isAccountOpsDisabled ? '账号已到期，无法启动账号' : ''"
               @click="emit('toggle', acc)"
             >
-              <div :class="acc.running ? 'i-carbon-stop-filled' : 'i-carbon-play-filled'" class="mr-1" />
+              <div :class="acc.running ? 'i-carbon-stop-filled' : 'i-carbon-play-filled'" class="mr-1 text-xs" />
               {{ acc.running ? '停止' : '启动' }}
             </BaseButton>
           </div>
         </div>
 
-        <div class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 sm:mt-4 dark:border-gray-700 sm:pt-4">
-          <div class="hidden items-center gap-2 text-sm text-gray-500 sm:flex">
-            <span class="flex items-center gap-1">
-              <div class="h-2 w-2 rounded-full" :class="acc.running ? 'bg-green-500' : 'bg-gray-300'" />
-              {{ acc.running ? '运行中' : '已停止' }}
-            </span>
-          </div>
-
-          <div class="flex flex-1 justify-end gap-1 sm:flex-initial sm:gap-2">
-            <BaseButton
-              :data-testid="`set-default-plan-${acc.id}`"
-              variant="ghost"
-              class="group relative min-h-[36px] min-w-[36px] !p-2"
-              :loading="defaultPlanSettingId === String(acc.id)"
-              :disabled="!!defaultPlanSettingId || !!defaultPlanApplyingId"
-              aria-label="设置默认方案"
-              title="设置默认方案"
-              @click="emit('setDefaultPlan', acc)"
-            >
-              <div v-if="defaultPlanSettingId !== String(acc.id)" i-carbon-document-export />
-              <span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 -translate-x-1/2 dark:bg-gray-100 dark:text-gray-900 group-focus-visible:opacity-100 group-hover:opacity-100">
-                设置默认方案
-              </span>
-            </BaseButton>
-            <BaseButton
-              :data-testid="`apply-default-plan-${acc.id}`"
-              variant="ghost"
-              class="group relative min-h-[36px] min-w-[36px] !p-2"
-              :loading="defaultPlanApplyingId === String(acc.id)"
-              :disabled="!!defaultPlanSettingId || !!defaultPlanApplyingId"
-              aria-label="应用默认方案"
-              title="应用默认方案"
-              @click="emit('applyDefaultPlan', acc)"
-            >
-              <div v-if="defaultPlanApplyingId !== String(acc.id)" i-carbon-document-import />
-              <span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 -translate-x-1/2 dark:bg-gray-100 dark:text-gray-900 group-focus-visible:opacity-100 group-hover:opacity-100">
-                应用默认方案
-              </span>
-            </BaseButton>
-            <BaseButton
-              variant="ghost"
-              class="group relative min-h-[36px] min-w-[36px] !p-2"
-              aria-label="设置"
-              title="设置"
+        <div class="mt-2.5 flex items-center justify-between border-t border-gray-100 pt-2.5 dark:border-gray-700/60">
+          <!-- 左侧：拟物态胶囊按钮 (功能配置 绿色, 掉线通知 红色) -->
+          <div class="flex items-center gap-2">
+            <!-- 功能配置 -->
+            <button
+              type="button"
+              class="neu-capsule-btn neu-green inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all active:scale-95"
+              title="功能配置"
               @click="emit('settings', acc)"
             >
-              <div i-carbon-settings />
-              <span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 -translate-x-1/2 dark:bg-gray-100 dark:text-gray-900 group-focus-visible:opacity-100 group-hover:opacity-100">
-                设置
-              </span>
-            </BaseButton>
+              <div class="i-carbon-settings text-xs" />
+              <span>功能配置</span>
+            </button>
+
+            <!-- 掉线通知 -->
+            <button
+              type="button"
+              class="neu-capsule-btn neu-red inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all active:scale-95"
+              title="掉线通知"
+              @click="emit('notification', acc)"
+            >
+              <div class="i-carbon-notification text-xs" />
+              <span>掉线通知</span>
+            </button>
+          </div>
+
+          <!-- 右侧：轻量操作图标 (编辑备注, 删除账号) -->
+          <div class="flex items-center gap-1">
             <BaseButton
               variant="ghost"
-              class="group relative min-h-[36px] min-w-[36px] !p-2"
-              aria-label="编辑"
-              title="编辑"
+              class="group relative min-h-[32px] min-w-[32px] !p-1.5 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label="编辑备注"
+              title="编辑备注"
               @click="emit('edit', acc)"
             >
-              <div i-carbon-edit />
+              <div i-carbon-edit class="text-base" />
               <span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 -translate-x-1/2 dark:bg-gray-100 dark:text-gray-900 group-focus-visible:opacity-100 group-hover:opacity-100">
                 编辑
               </span>
             </BaseButton>
+
             <BaseButton
               variant="ghost"
-              class="group relative min-h-[36px] min-w-[36px] text-red-500 !p-2 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"
+              class="group relative min-h-[32px] min-w-[32px] text-red-500 !p-1.5 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"
               aria-label="删除"
               title="删除"
               @click="emit('delete', acc)"
             >
-              <div i-carbon-trash-can />
+              <div i-carbon-trash-can class="text-base" />
               <span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity duration-150 -translate-x-1/2 dark:bg-gray-100 dark:text-gray-900 group-focus-visible:opacity-100 group-hover:opacity-100">
                 删除
               </span>
@@ -285,3 +267,53 @@ function accountAvatar(acc: any) {
     />
   </div>
 </template>
+
+<style scoped>
+/* 拟物态微立体胶囊按钮 */
+.neu-capsule-btn {
+  border: 1.5px solid transparent;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 2px 5px rgba(0, 0, 0, 0.06);
+}
+
+.neu-green {
+  background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #86efac;
+  color: #15803d;
+}
+.neu-green:hover {
+  background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+  border-color: #4ade80;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    0 3px 8px rgba(34, 197, 94, 0.2);
+}
+
+.neu-red {
+  background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%);
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+.neu-red:hover {
+  background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
+  border-color: #f87171;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    0 3px 8px rgba(239, 68, 68, 0.2);
+}
+
+.dark .neu-green {
+  background: linear-gradient(180deg, rgba(20, 83, 45, 0.35) 0%, rgba(20, 83, 45, 0.6) 100%);
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #86efac;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.dark .neu-red {
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.35) 0%, rgba(127, 29, 29, 0.6) 100%);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+</style>

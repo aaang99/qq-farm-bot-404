@@ -70,11 +70,24 @@ watch(activeTab, (newTab) => {
   void scrollActiveTabIntoView()
 })
 
-const tabs = computed(() => [
+/* const tabs = computed(() => [
   { key: 'account' as SettingsTabKey, label: '账号管理', icon: 'i-carbon-user-settings' },
   { key: 'account-config' as SettingsTabKey, label: '账号设置', icon: 'i-carbon-settings-adjust' },
   { key: 'notification' as SettingsTabKey, label: '通知设置', icon: 'i-carbon-notification' },
-])
+]) */
+
+const showDrawerModal = ref(false)
+const drawerActiveTab = ref<'account-config' | 'notification'>('account-config')
+
+function openDrawer(tab: 'account-config' | 'notification', account?: any) {
+  if (account) selectAccount(account)
+  drawerActiveTab.value = tab
+  showDrawerModal.value = true
+}
+
+function closeDrawer() {
+  showDrawerModal.value = false
+}
 
 const modalVisible = ref(false)
 const defaultPlanSettingId = ref('')
@@ -261,8 +274,7 @@ async function saveAutoCodeRefreshSettings() {
 }
 
 function openAccountSettings(account: any) {
-  selectAccount(account)
-  activeTab.value = 'account-config'
+  openDrawer('account-config', account)
 }
 
 async function saveSystemSettings() {
@@ -396,29 +408,12 @@ onMounted(async () => {
   <div class="settings-page">
     <div class="mb-4">
       <h1 class="text-2xl text-gray-900 font-bold dark:text-gray-100">
-        设置
+        账号
       </h1>
     </div>
 
     <div class="border border-gray-200 rounded-lg bg-white shadow dark:border-gray-700 dark:bg-gray-800">
-      <div class="border-b border-gray-200 dark:border-gray-700">
-        <nav ref="settingsTabsNav" class="flex gap-1 overflow-x-auto p-2">
-          <button
-            v-for="tab in tabs"
-            :key="tab.key"
-            :data-settings-tab="tab.key"
-            class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all"
-            :class="activeTab === tab.key
-              ? 'text-white shadow-sm'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700'"
-            :style="activeTab === tab.key ? { backgroundColor: 'var(--theme-primary)' } : {}"
-            @click="activeTab = tab.key"
-          >
-            <div :class="tab.icon" />
-            {{ tab.label }}
-          </button>
-        </nav>
-      </div>
+
 
       <div class="p-4">
         <!-- 账号管理 -->
@@ -448,6 +443,7 @@ onMounted(async () => {
           @select="selectAccount"
           @toggle="toggleAccount"
           @settings="openAccountSettings"
+          @notification="openDrawer('notification', $event)"
           @set-default-plan="requestDefaultPlanConfirmation('set', $event)"
           @apply-default-plan="requestDefaultPlanConfirmation('apply', $event)"
           @edit="openEditModal"
@@ -598,4 +594,80 @@ onMounted(async () => {
       @cancel="modalVisible = false"
     />
   </div>
+
+    <!-- 液态玻璃配置浮层 (含账号设置与通知设置，右上角有关闭按钮) -->
+    <Teleport to="body">
+      <div v-if="showDrawerModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-3 sm:p-5 backdrop-blur-sm" @click.self="closeDrawer">
+        <div class="max-h-[88vh] max-w-2xl w-full flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-white/70 dark:border-white/10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl animate-scale-in">
+          <!-- 浮层头部 (单一标题 + 右上角关闭按钮) -->
+          <div class="flex items-center justify-between border-b border-gray-100/80 px-4 py-3 sm:px-5 dark:border-gray-800">
+            <div class="flex items-center gap-2.5">
+              <div
+                class="h-8 w-8 flex items-center justify-center rounded-xl text-base shadow-sm"
+                :class="drawerActiveTab === 'account-config' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'"
+              >
+                <div :class="drawerActiveTab === 'account-config' ? 'i-carbon-settings' : 'i-carbon-notification'" />
+              </div>
+              <div>
+                <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">
+                  {{ drawerActiveTab === 'account-config' ? '账号功能配置' : '掉线通知配置' }}
+                </h3>
+                <p v-if="currentAccountName" class="text-[11px] text-gray-400">
+                  正在配置：{{ currentAccountName }}
+                </p>
+              </div>
+            </div>
+            <!-- 右上角关闭按钮 -->
+            <button
+              class="h-8 w-8 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title="关闭"
+              @click="closeDrawer"
+            >
+              <div class="i-carbon-close text-xl" />
+            </button>
+          </div>
+
+          <!-- 浮层内容滚动区 -->
+          <div class="flex-1 overflow-y-auto p-4 sm:p-5">
+            <AccountFeatureSettings
+              v-if="drawerActiveTab === 'account-config'"
+              v-model:strategy="localStrategySettings"
+              v-model:automation="localAutomationSettings"
+              :current-account-name="currentAccountName"
+              :current-account-id="currentAccountId"
+              :loading="settingsLoading"
+              :saving="accountSettingsSaving"
+              :planting-strategy-options="plantingStrategyOptions"
+              :bag-fallback-strategy-options="bagFallbackStrategyOptions"
+              :strategy-preview-label="strategyPreviewLabel"
+              :fertilizer-land-type-options="fertilizerLandTypeOptions"
+              :fertilizer-options="fertilizerOptions"
+              @save="saveCurrentAccountSettings"
+            />
+
+            <div v-else-if="drawerActiveTab === 'notification'" class="space-y-4">
+              <div class="flex items-center justify-between border-b border-gray-100/70 pb-2 dark:border-gray-800/70">
+                <span class="text-xs text-gray-500">
+                  {{ currentAccountName ? `正在配置通知：${currentAccountName}` : '全局通知设置' }}
+                </span>
+                <BaseButton size="sm" :loading="offlineSaving" :disabled="offlineTesting" @click="handleSaveOffline">
+                  保存通知设置
+                </BaseButton>
+              </div>
+              <OfflineReminderCard
+                v-model:config="localOffline"
+                :channel-options="channelOptions"
+                :current-channel-doc-url="currentChannelDocUrl"
+                :saving="offlineSaving"
+                :testing="offlineTesting"
+                :show-save="false"
+                @open-docs="openChannelDocs"
+                @test="handleTestOffline"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
 </template>

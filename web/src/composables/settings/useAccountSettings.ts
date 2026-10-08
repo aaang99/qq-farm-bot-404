@@ -51,7 +51,7 @@ export function useAccountSettings(showAlert: (message: string, type?: AlertType
   const stoppedAccountsCount = computed(() => stoppedAccounts.value.length)
   const currentAccountName = computed(() => {
     const acc = accounts.value.find((item: any) => item.id === currentAccountId.value)
-    return acc ? (acc.name || acc.nick || acc.id) : null
+    return acc ? (acc.nick || acc.name || acc.id) : null
   })
 
   useIntervalFn(() => {
