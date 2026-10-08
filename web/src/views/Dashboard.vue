@@ -260,7 +260,8 @@ function formatBucketTime(item: any) {
 }
 
 function updateCountdowns() {
-  if (currentAccountDisconnected.value) {
+  if (!currentAccountId.value || currentAccountDisconnected.value || !status.value?.connection?.connected) {
+    localUptime.value = 0
     nextFarmCheck.value = '账号未登录'
     nextHelpCheck.value = '账号未登录'
     nextStealCheck.value = '账号未登录'
