@@ -467,6 +467,10 @@ function registerAdminAccountRoutes({
 
     if (!accountId) {
       const accessibleIds = getAccessibleAccountIdsFromRequest(req);
+      // 新注册用户尚未添加账号时，不展示任何全局启动日志，保持空白清爽
+      if (accessibleIds.length === 0) {
+        return res.json({ ok: true, data: [] });
+      }
       const mergedLogs = [];
       const query = createLogQuery(req.query);
       for (const accessibleId of accessibleIds) {

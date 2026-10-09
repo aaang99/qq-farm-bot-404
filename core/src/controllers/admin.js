@@ -659,7 +659,10 @@ function startAdminServer(dataProvider) {
           const accessibleAccountIds = getAccessibleAccountIdsForUser(socketUser);
           logs = logs.filter((logEntry) => {
             const logAccountId = logEntry.accountId || logEntry.id;
-            if (!logAccountId) return true;
+            // 仅对明确属于该用户账号的日志放行；如果该用户尚未添加账号，不推送系统启动日志，避免空白账号产生误导
+            if (!logAccountId) {
+              return accessibleAccountIds.length > 0 && socketUser.role === 'admin';
+            }
             return accessibleAccountIds.includes(logAccountId);
           });
         }
