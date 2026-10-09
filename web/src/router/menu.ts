@@ -52,6 +52,13 @@ export const menuRoutes: MenuItem[] = [
     component: () => import('@/views/Activity.vue'),
   },
   {
+    path: 'ranking',
+    name: 'ranking',
+    label: '本站排行',
+    icon: '/ranking/rank.svg',
+    component: () => import('@/views/Ranking.vue'),
+  },
+  {
     path: 'shop',
     name: 'shop',
     label: '道具商城',
@@ -64,13 +71,6 @@ export const menuRoutes: MenuItem[] = [
     label: '作物图鉴',
     icon: 'i-carbon-book',
     component: () => import('@/views/Illustrated.vue'),
-  },
-  {
-    path: 'ranking',
-    name: 'ranking',
-    label: '本站排行',
-    icon: '/ranking/rank.svg',
-    component: () => import('@/views/Ranking.vue'),
   },
   {
     path: 'analytics',
