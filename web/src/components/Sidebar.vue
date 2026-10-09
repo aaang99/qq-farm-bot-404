@@ -216,7 +216,14 @@ watch(
         @click="appStore.closeSidebar"
       >
         <span class="nav-icon-box h-9 w-9 flex flex-none items-center justify-center rounded-xl text-[20px] transition-all duration-200">
-          <img v-if="item.icon && item.icon.endsWith('.svg')" :src="item.icon" alt="" class="h-5 w-5 object-contain" />
+          <span
+            v-if="item.icon && item.icon.endsWith('.svg')"
+            class="h-5 w-5 bg-current inline-block"
+            :style="{
+              mask: `url(${item.icon}) no-repeat center / contain`,
+              WebkitMask: `url(${item.icon}) no-repeat center / contain`
+            }"
+          />
           <div v-else :class="[item.icon]" />
         </span>
         <span class="min-w-0 flex-1 truncate text-sm font-semibold tracking-wide">{{ item.label }}</span>

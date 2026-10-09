@@ -145,9 +145,12 @@ onMounted(() => {
       <!-- 头部：标题与周期筛选 (日榜 / 周榜 / 月榜) -->
       <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
-          <!-- 专属排位台阶领奖台 SVG 图标 -->
-          <div class="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/25 p-1 shadow-sm">
-            <img src="/ranking/ranking-title.svg" alt="排行榜" class="h-full w-full object-contain">
+          <!-- 专属农场风云榜领奖台图标（完美自适应主题色） -->
+          <div class="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/25 p-1.5 shadow-sm text-emerald-600 dark:text-emerald-400">
+            <span
+              class="h-full w-full bg-current inline-block"
+              style="mask: url(/ranking/rank.svg) no-repeat center / contain; -webkit-mask: url(/ranking/rank.svg) no-repeat center / contain;"
+            />
           </div>
           <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-gray-900 dark:text-white">
             农场风云榜

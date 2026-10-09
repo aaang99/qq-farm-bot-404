@@ -69,7 +69,7 @@ export const menuRoutes: MenuItem[] = [
     path: 'ranking',
     name: 'ranking',
     label: '排行榜',
-    icon: '/ranking/ranking-title.svg',
+    icon: '/ranking/rank.svg',
     component: () => import('@/views/Ranking.vue'),
   },
   {
