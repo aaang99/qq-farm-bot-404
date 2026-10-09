@@ -12,6 +12,7 @@ import { useAccountStore } from '@/stores/account'
 import { useBagStore } from '@/stores/bag'
 import { useStatusStore } from '@/stores/status'
 import { useToastStore } from '@/stores/toast'
+import { useUserStore } from '@/stores/user'
 import { formatCouponAmount, formatGoldAmount, formatGoldBeanAmount } from '@/utils/number-format'
 import { compactRuntimeLogs, matchesRuntimeLog, normalizeRuntimeLog } from '@/utils/runtime-log'
 
@@ -19,6 +20,7 @@ const statusStore = useStatusStore()
 const accountStore = useAccountStore()
 const bagStore = useBagStore()
 const toastStore = useToastStore()
+const userStore = useUserStore()
 
 const {
   status,
@@ -114,6 +116,9 @@ const events = [
   { label: '喂食宠物', value: '喂食宠物' },
   { label: '资本模式派出', value: '资本模式派出' },
   { label: '资本模式召回', value: '资本模式召回' },
+  { label: '有机化肥检测', value: 'check_fertilizer_organic' },
+  { label: '普通化肥检测', value: 'check_fertilizer_normal' },
+  { label: '化肥自动购买检测', value: 'check_fertilizer' },
 ]
 
 const eventLabelMap: Record<string, string> = Object.fromEntries(
@@ -158,6 +163,9 @@ let localNextStealRemainSec = 0
 const farmCountdownTotal = ref(1)
 const helpCountdownTotal = ref(1)
 const stealCountdownTotal = ref(1)
+
+
+// Task modal moved to AccountSettingsTab
 
 function resetDashboardState() {
   illustratedLevelRequestId += 1
@@ -223,6 +231,9 @@ const filteredOperations = computed(() => {
 })
 
 function getEventLabel(event: string) {
+  if (event === 'check_fertilizer_organic') return '有机化肥检测'
+  if (event === 'check_fertilizer_normal') return '普通化肥检测'
+  if (event === 'check_fertilizer') return '化肥检测'
   return eventLabelMap[event] || event
 }
 
@@ -455,6 +466,7 @@ async function refresh(forceReloadLogs = false) {
 
   // 仅在账号运行且连接稳定后再拉背包，避免启动阶段出现 500。
   await refreshBag()
+  if (currentAccountId.value && currentAccount.value?.running) statusStore.fetchDailyGifts(currentAccountId.value)
 }
 
 function syncRealtimeAccount() {
@@ -660,13 +672,20 @@ function openCareer() {
               {{ displayName.slice(0, 1) }}
             </div>
           </div>
-          <div class="min-w-0 flex items-center gap-2">
-            <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
-              {{ displayName }}
-            </span>
-            <span class="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-              Lv.{{ status?.status?.level || 0 }}
-            </span>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
+                {{ displayName }}
+              </span>
+              <span class="shrink-0 rounded-md bg-blue-100 px-1.5 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                Lv.{{ status?.status?.level || 0 }}
+              </span>
+            </div>
+            <!-- 到期时间小字：灰色极简字体 -->
+            <div class="truncate text-xs text-gray-400 mt-0.5 font-mono">
+              <span v-if="userStore.userCard">到期：{{ userStore.expireTimeText }}</span>
+              <span v-else>永久有效</span>
+            </div>
           </div>
         </div>
 
@@ -1015,4 +1034,7 @@ function openCareer() {
       />
     </Teleport>
   </div>
+
+
+
 </template>

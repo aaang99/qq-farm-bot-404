@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   dailyGifts: any
-}>()
+  hideCard?: boolean
+  showGrowth?: boolean
+}>(), {
+  hideCard: false,
+  showGrowth: false,
+})
 
 const GIFT_ICONS: Record<string, string> = {
   task_claim: 'i-carbon-task-complete',
@@ -20,6 +25,24 @@ function getGiftIcon(key: string) {
 
 const hasDailyData = computed(() => !!props.dailyGifts)
 const gifts = computed(() => props.dailyGifts?.gifts || [])
+
+const growth = computed(() => props.dailyGifts?.growth || null)
+
+function formatTaskProgress(task: any) {
+  if (!task)
+    return '未开始'
+  const rawCurrent = task.progress ?? task.current
+  const rawTarget = task.totalProgress ?? task.target
+  const current = Number(rawCurrent || 0)
+  const target = Number(rawTarget || 0)
+
+  if (!current && !target)
+    return '未开始'
+  if (target && current >= target)
+    return '已完成'
+  return `进度：${current}/${target}`
+}
+
 
 function formatTime(timestamp: number) {
   if (!timestamp)
@@ -73,9 +96,9 @@ function formatGiftProgress(gift: any) {
 
 <template>
   <div class="flex flex-col gap-4">
-    <!-- Daily Gifts Liquid Glass Card -->
-    <div class="ui-card metric-card rounded-2xl p-5">
-      <h3 class="mb-4 flex items-center gap-2.5 font-bold tracking-tight text-base" style="color: var(--theme-text);">
+    <!-- Daily Gifts Container -->
+    <div :class="props.hideCard ? '' : 'ui-card metric-card rounded-2xl p-5'">
+      <h3 v-if="!props.hideCard" class="mb-4 flex items-center gap-2.5 font-bold tracking-tight text-base" style="color: var(--theme-text);">
         <div class="h-8 w-8 flex items-center justify-center rounded-xl bg-pink-500/15 text-pink-500 shadow-sm border border-pink-500/20">
           <div class="i-carbon-gift text-lg" />
         </div>
@@ -133,6 +156,44 @@ function formatGiftProgress(gift: any) {
                 style="color: var(--theme-text);"
               >
                 {{ formatGiftSubText(gift) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 成长任务板块 (嵌入在每日任务浮层底部) -->
+      <div v-if="props.showGrowth && growth" class="mt-4 border-t border-gray-100/80 pt-3 dark:border-gray-800">
+        <div class="flex flex-col rounded-xl bg-gray-50/70 p-3.5 dark:bg-gray-800/40 border border-gray-100/60 dark:border-gray-800/60">
+          <div class="mb-2 flex items-center justify-between">
+            <h4 class="flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200">
+              <div class="i-carbon-growth text-green-500" />
+              <span>成长任务</span>
+            </h4>
+            <span
+              class="rounded px-2 py-0.5 text-xs font-bold"
+              :class="growth.doneToday
+                ? 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20'
+                : 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20'"
+            >
+              {{ growth.doneToday ? '今日已完成' : `${growth.completedCount}/${growth.totalCount}` }}
+            </span>
+          </div>
+
+          <div v-if="!growth.tasks || !growth.tasks.length" class="text-xs text-gray-400 py-1">
+            暂无成长任务
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="task in growth.tasks"
+              :key="task.id"
+              class="flex items-center justify-between text-xs"
+            >
+              <span class="truncate text-gray-700 dark:text-gray-300 font-medium">
+                {{ task.name || task.desc || '成长任务' }}
+              </span>
+              <span class="text-gray-400 font-mono shrink-0 ml-2">
+                {{ formatTaskProgress(task) }}
               </span>
             </div>
           </div>

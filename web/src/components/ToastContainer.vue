@@ -33,7 +33,7 @@ function getBorderColor(type: string) {
 </script>
 
 <template>
-  <div class="pointer-events-none fixed right-3 top-20 z-[9997] max-w-[calc(100vw-1.5rem)] flex flex-col gap-2 md:right-4 md:top-24">
+  <div class="pointer-events-none fixed right-3 top-20 z-[100000] max-w-[calc(100vw-1.5rem)] flex flex-col gap-2 md:right-4 md:top-24">
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
