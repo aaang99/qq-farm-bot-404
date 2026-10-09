@@ -50,11 +50,11 @@ function isMyAccount(itemOrCareer: RankingItem | PublicCareer | null | undefined
   return String(itemOrCareer.username || '').toLowerCase() === String(currentUsername.value).toLowerCase()
 }
 
-// 昵称脱敏逻辑：本人名下全显；榜上其他人仅显示第一个字 + 后面固定5个*
+// 昵称脱敏逻辑：管理员直接全显；普通用户本人全显，他人仅显示第一个字 + 后面固定5个*
 function formatDisplayName(itemOrCareer: RankingItem | PublicCareer | null | undefined) {
   if (!itemOrCareer) return '农友'
   const rawName = String(itemOrCareer.name || '').trim() || '农友'
-  if (isMyAccount(itemOrCareer)) {
+  if (isAdmin.value || isMyAccount(itemOrCareer)) {
     return rawName
   }
   const firstChar = Array.from(rawName)[0] || '*'
