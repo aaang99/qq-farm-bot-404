@@ -23,6 +23,8 @@ interface RankingItem {
 }
 
 interface PublicCareer {
+  id?: string
+  username?: string
   name: string
   avatar: string
   level: number
@@ -40,6 +42,24 @@ interface PublicCareer {
 
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isAdmin)
+const currentUsername = computed(() => userStore.username)
+
+// 判断账号是否属于当前登录用户
+function isMyAccount(itemOrCareer: RankingItem | PublicCareer | null | undefined) {
+  if (!itemOrCareer || !currentUsername.value) return false
+  return String(itemOrCareer.username || '').toLowerCase() === String(currentUsername.value).toLowerCase()
+}
+
+// 昵称脱敏逻辑：本人名下全显；榜上其他人仅显示第一个字 + 后面固定5个*
+function formatDisplayName(itemOrCareer: RankingItem | PublicCareer | null | undefined) {
+  if (!itemOrCareer) return '农友'
+  const rawName = String(itemOrCareer.name || '').trim() || '农友'
+  if (isMyAccount(itemOrCareer)) {
+    return rawName
+  }
+  const firstChar = Array.from(rawName)[0] || '*'
+  return `${firstChar}*****`
+}
 
 const loading = ref(false)
 const list = ref<RankingItem[]>([])
@@ -94,7 +114,11 @@ async function openUserCareer(item: RankingItem) {
   try {
     const res = await api.get(`/api/ranking/career/${item.id}`)
     if (res.data && res.data.ok) {
-      careerData.value = res.data.data
+      careerData.value = {
+        ...res.data.data,
+        id: item.id,
+        username: item.username,
+      }
     }
   } catch (err) {
     console.error('加载农友生涯失败:', err)
@@ -361,10 +385,16 @@ onMounted(() => {
               </div>
 
               <div class="flex flex-col min-w-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                   <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white truncate">
-                    {{ careerData.name }}
+                    {{ formatDisplayName(careerData) }}
                   </h3>
+                  <span
+                    v-if="isMyAccount(careerData)"
+                    class="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm ring-1 ring-white/50 dark:ring-white/10"
+                  >
+                    我
+                  </span>
                   <span class="text-xs text-amber-500 font-bold font-mono shrink-0">
                     Lv.{{ careerData.level }}
                   </span>
