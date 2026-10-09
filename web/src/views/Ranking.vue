@@ -285,10 +285,10 @@ onMounted(() => {
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span
                     class="font-bold text-gray-900 dark:text-white truncate text-sm cursor-pointer hover:underline"
-                    :title="item.name"
+                    :title="isMyAccount(item) ? item.name : '农友昵称已加密'"
                     @click="openUserCareer(item)"
                   >
-                    {{ item.name }}
+                    {{ formatDisplayName(item) }}
                   </span>
                   
                   <!-- 等级 -->
@@ -312,6 +312,13 @@ onMounted(() => {
                   <span class="flex items-center gap-1">
                     <div class="i-carbon-user text-[11px] opacity-75" />
                     <span>归属: <strong class="text-gray-600 dark:text-gray-300 font-medium font-mono">{{ formatMaskedUsername(item.username) }}</strong></span>
+                  </span>
+                  <!-- 本人账号归属标签 -->
+                  <span
+                    v-if="isMyAccount(item)"
+                    class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm ring-1 ring-white/50 dark:ring-white/10"
+                  >
+                    我
                   </span>
                 </div>
               </div>
