@@ -161,10 +161,10 @@ function createRuntimeState(deps) {
         const aid = String(accountId || '');
         const ops = buildEmptyOperations();
         let totalSteal = 0;
+        const todayKey = getTodayKey();
 
         if (aid) {
             const persisted = loadPersistedStats(aid);
-            const todayKey = getTodayKey();
             if (persisted) {
                 if (persisted.date === todayKey && persisted.operations) {
                     for (const key of operationKeys) {
