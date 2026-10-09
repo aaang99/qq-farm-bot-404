@@ -252,21 +252,26 @@ function getLocalDateKey() {
 
 async function runDailyRoutines(force = false, options = {}) {
     if (!loginReady || friendSyncPaused) return;
-    try {
-        const automation = getAutomation() || {};
-        await checkAndClaimEmails(force);
-        if (automation.task && !options.skipTask) await checkAndClaimTasks();
-        if (automation.fertilizer_gift) await openFertilizerGiftPacksSilently();
-        await performDailyShare(force);
-        await performDailyMonthCardGift(force);
-        await buyFreeGifts(force);
-        await performDailyVipGift(force);
-    } catch (err) {
-        log('系统', `每日任务调度失败: ${  err.message}`, {
-            module: 'system',
-            event: '每日任务',
-            result: 'error'
-        });
+    const automation = getAutomation() || {};
+    const tasks = [
+        ['邮件', () => checkAndClaimEmails(force)],
+        ['每日任务', () => (automation.task && !options.skipTask) ? checkAndClaimTasks() : Promise.resolve()],
+        ['化肥礼包', () => automation.fertilizer_gift ? openFertilizerGiftPacksSilently() : Promise.resolve()],
+        ['分享', () => performDailyShare(force)],
+        ['月卡', () => performDailyMonthCardGift(force)],
+        ['免费礼包', () => buyFreeGifts(force)],
+        ['SVIP', () => performDailyVipGift(force)],
+    ];
+    for (const [name, fn] of tasks) {
+        try {
+            await fn();
+        } catch (err) {
+            log('系统', `每日[${name}]执行失败: ${err.message}`, {
+                module: 'system',
+                event: '每日任务',
+                result: 'error'
+            });
+        }
     }
 }
 
