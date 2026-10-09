@@ -453,6 +453,10 @@ function initTaskSystem() {
   taskScheduler.setTimeoutTask('task_init_bootstrap', 15000, () => {
     checkAndClaimTasks();
   });
+  // 周期性轮询领取每日/成长任务及活跃奖励（每 5 分钟自动扫描并静默领取）
+  taskScheduler.setIntervalTask('task_periodic_claim', 300000, () => {
+    checkAndClaimTasks();
+  });
 }
 
 function cleanupTaskSystem() {
