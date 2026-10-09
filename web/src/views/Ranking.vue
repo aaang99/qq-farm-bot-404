@@ -114,8 +114,14 @@ function selectMetric(metric: 'gold' | 'steal') {
 }
 
 function formatNumber(val: number) {
-  if (!val || val === 0) return '0'
-  return Number(val).toLocaleString('zh-CN')
+  const num = Number(val || 0)
+  if (!num) return '0'
+  if (num >= 10000) {
+    const w = num / 10000
+    const str = (w >= 100 ? w.toFixed(1) : w.toFixed(2)).replace(/\.0+$|(?<=\.\d)0+$/g, '')
+    return `${str}万`
+  }
+  return num.toLocaleString('zh-CN')
 }
 
 function formatCompactNumber(val: number) {
@@ -239,12 +245,13 @@ onMounted(() => {
                 <img
                   :src="item.avatar || '/icon.png'"
                   alt="头像"
+                  referrerpolicy="no-referrer"
                   class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl object-cover ring-2 ring-white/80 dark:ring-white/10 shadow-sm transition-transform duration-200 group-hover:scale-105 active:scale-95"
                   @error="(e: any) => e.target.src = '/icon.png'"
                 >
                 <span
                   class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-gray-900"
-                  :class="item.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"
+                  :class="item.isOnline ? 'bg-emerald-500' : 'bg-gray-400'"
                   :title="item.isOnline ? '正在运行中' : '离线'"
                 />
               </div>
