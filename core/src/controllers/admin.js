@@ -34,6 +34,7 @@ const {
 } = require("./admin-account-runtime-routes");
 const { registerAdminAccountRoutes } = require("./admin-account-routes");
 const { registerAdminAnalyticsRoutes } = require("./admin-analytics-routes");
+const { registerAdminRankingRoutes } = require("./admin-ranking-routes");
 const { createAdminAccountAccess } = require("./admin-account-access");
 const { registerAdminAuthRoutes } = require("./admin-auth-routes");
 const { registerAdminUserManagementRoutes } = require("./admin-user-management-routes");
@@ -534,6 +535,7 @@ function startAdminServer(dataProvider) {
     sendProviderError,
   });
   registerAdminAnalyticsRoutes({ app });
+  registerAdminRankingRoutes({ app, store, provider });
   registerAdminSettingsRoutes({
     app,
     provider,

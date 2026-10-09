@@ -145,11 +145,34 @@ function doSave() {
   const todayKey = getTodayKey();
   const ops = { ...operations };
   const init = { ...initialState };
+  const last = { ...lastState };
+  let profile = {};
+  try {
+    const { statusData } = require('./status');
+    if (statusData && (statusData.level || statusData.name)) {
+      profile = {
+        level: Number(statusData.level) || 0,
+        name: statusData.name || '',
+        avatar: statusData.avatar || '',
+        gold: Number(statusData.gold) || 0,
+        exp: Number(statusData.exp) || 0,
+      };
+    }
+  } catch {}
+
+  const prev = loadPersistedStats(currentAccountId) || {};
   const data = {
     date: todayKey,
     operations: ops,
     tongQiGiftCount,
     initialState: init,
+    lastState: last,
+    profile: (profile.level || profile.name) ? profile : (prev.profile || {}),
+    gains: {
+      gold: Math.max(0, session.goldGained),
+      exp: Math.max(0, session.expGained),
+      coupon: Math.max(0, session.couponGained),
+    },
     savedAt: Date.now()
   };
   savePersistedStats(currentAccountId, data);
@@ -210,13 +233,33 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
     });
     tongQiGiftCount = Number(persisted.tongQiGiftCount) || Number(operations.tongQiGift) || 0;
     operations.tongQiGift = tongQiGiftCount;
-    console.warn(`[统计] 已恢复今日统计数据: ${JSON.stringify(persisted.operations)}, 同气连枝礼包: ${tongQiGiftCount}`);
+
+    // 恢复今日初始资产快照（让断线重连/重启后收益能连续计算，不被重置清零）
+    if (persisted.initialState && persisted.initialState.gold !== null) {
+      initialState.gold = Number(persisted.initialState.gold);
+      initialState.exp = Number(persisted.initialState.exp);
+      initialState.coupon = Number(persisted.initialState.coupon);
+    }
+    if (persisted.gains) {
+      session.goldGained = Number(persisted.gains.gold) || 0;
+      session.expGained = Number(persisted.gains.exp) || 0;
+      session.couponGained = Number(persisted.gains.coupon) || 0;
+    }
+    console.warn(`[统计] 已恢复今日统计与收益数据: ${JSON.stringify(persisted.operations)}, 今日收益: 金币+${session.goldGained}`);
   } else if (persisted) {
     console.warn(`[统计] 日期已变更，重置统计 (${persisted.date} -> ${todayKey})`);
   } else {
     console.warn('[统计] 新账号初始化，无历史数据');
   }
   initStats(gold, exp, coupon);
+  if (persisted && persisted.date === todayKey && persisted.initialState && persisted.initialState.gold !== null) {
+    initialState.gold = Number(persisted.initialState.gold);
+    initialState.exp = Number(persisted.initialState.exp);
+    initialState.coupon = Number(persisted.initialState.coupon);
+    session.goldGained = Math.max(0, gold - initialState.gold);
+    session.expGained = Math.max(0, exp - initialState.exp);
+    session.couponGained = Math.max(0, coupon - initialState.coupon);
+  }
 }
 
 /**

@@ -179,21 +179,44 @@ function createRuntimeState(deps) {
             }
         }
 
+        let savedLevel = 0;
+        let savedName = '';
+        let savedGold = 0;
+        let savedExp = 0;
+        let savedGoldGained = 0;
+        let savedExpGained = 0;
+
+        if (aid) {
+            const p = loadPersistedStats(aid);
+            if (p) {
+                if (p.profile) {
+                    savedLevel = Number(p.profile.level) || 0;
+                    savedName = p.profile.name || '';
+                    savedGold = Number(p.profile.gold) || 0;
+                    savedExp = Number(p.profile.exp) || 0;
+                }
+                if (p.gains) {
+                    savedGoldGained = Number(p.gains.gold) || 0;
+                    savedExpGained = Number(p.gains.exp) || 0;
+                }
+            }
+        }
+
         return {
             connection: { connected: false },
-            status: { name: '', level: 0, gold: 0, exp: 0, platform: 'qq' },
+            status: { name: savedName, level: savedLevel, gold: savedGold, exp: savedExp, platform: 'qq' },
             uptime: 0,
             operations: ops,
             totalSteal,
-            sessionExpGained: 0,
-            sessionGoldGained: 0,
+            sessionExpGained: savedExpGained,
+            sessionGoldGained: savedGoldGained,
             sessionCouponGained: 0,
             lastExpGain: 0,
             lastGoldGain: 0,
             limits: {},
             wsError: null,
             automation: store.getAutomation(aid),
-            expProgress: { current: 0, needed: 0, level: 0 },
+            expProgress: { current: 0, needed: 0, level: savedLevel },
             configRevision,
             accountId: aid
         };

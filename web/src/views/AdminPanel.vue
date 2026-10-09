@@ -181,24 +181,30 @@ async function createCard() {
       count > 1 ? count : undefined,
       newCard.value.type,
     )
-    if (result.ok) {
+    if (result && result.ok) {
       if (result.batch) {
         toast.success(`成功创建 ${result.count} 个卡密`)
-        exportCardsToFile(result.data, `卡密批量导出_${newCard.value.description}_${formatDateForFile(Date.now())}.txt`)
+        try {
+          exportCardsToFile(result.data, `卡密批量导出_${newCard.value.description}_${formatDateForFile(Date.now())}.txt`)
+        } catch {}
       }
       else {
         toast.success('卡密创建成功')
       }
       showCreateModal.value = false
       newCard.value = { description: '', days: 30, count: 1, type: 'time' }
-      await fetchCards()
+      // 延迟 300ms 刷新列表，确保后端文件写入完毕并防网络竞态
+      setTimeout(() => {
+        fetchCards()
+      }, 300)
     }
     else {
-      toast.error(result.error || '创建卡密失败')
+      toast.error(result?.error || '创建卡密失败')
     }
   }
   catch (e: any) {
-    toast.error(e.message || '创建卡密失败')
+    // 捕获可能已成功写入但前端网络抖动的情况，自动静默刷新一次卡密列表
+    setTimeout(() => { fetchCards() }, 500)
   }
 }
 
