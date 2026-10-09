@@ -63,7 +63,7 @@ export const useUserStore = defineStore('user', () => {
     return Date.now() > userInfo.value.card.expiresAt
   })
 
-  // 获取过期时间显示
+  // 获取过期时间显示（仅展示年月日，极简清爽）
   const expireTimeText = computed(() => {
     if (!userInfo.value?.card)
       return '无卡密'
@@ -72,7 +72,10 @@ export const useUserStore = defineStore('user', () => {
     if (!userInfo.value.card.expiresAt)
       return '未激活'
     const date = new Date(userInfo.value.card.expiresAt)
-    return date.toLocaleString('zh-CN')
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}/${m}/${d}`
   })
 
   async function login(username: string, password: string): Promise<LoginResult> {

@@ -1083,13 +1083,21 @@ onUnmounted(() => {
 
           <div
             v-if="showCreateModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm"
             @click.self="showCreateModal = false"
           >
-            <div class="max-w-md w-[95vw] rounded-lg bg-white p-5 dark:bg-gray-800 sm:w-full" @click.stop>
-              <h2 class="mb-4 text-lg text-gray-900 font-bold dark:text-white">
-                创建卡密
-              </h2>
+            <div class="max-w-md w-full max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:p-6" @click.stop>
+              <div class="mb-4 flex items-center justify-between border-b border-gray-100 pb-2.5 dark:border-gray-700">
+                <h2 class="text-base sm:text-lg text-gray-900 font-bold dark:text-white">
+                  创建卡密
+                </h2>
+                <button
+                  class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  @click="showCreateModal = false"
+                >
+                  <div class="i-carbon-close text-xl" />
+                </button>
+              </div>
               <div class="space-y-3">
                 <div>
                   <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
@@ -1297,13 +1305,21 @@ onUnmounted(() => {
 
           <div
             v-if="showEditModal"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm"
             @click.self="showEditModal = false"
           >
-            <div class="max-w-md w-[95vw] rounded-lg bg-white p-5 dark:bg-gray-800 sm:w-full" @click.stop>
-              <h2 class="mb-4 text-lg text-gray-900 font-bold dark:text-white">
-                编辑用户：{{ selectedUser?.username }}
-              </h2>
+            <div class="max-w-md w-full max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:p-6" @click.stop>
+              <div class="mb-4 flex items-center justify-between border-b border-gray-100 pb-2.5 dark:border-gray-700">
+                <h2 class="text-base sm:text-lg text-gray-900 font-bold dark:text-white truncate">
+                  编辑用户：{{ selectedUser?.username }}
+                </h2>
+                <button
+                  class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  @click="showEditModal = false"
+                >
+                  <div class="i-carbon-close text-xl" />
+                </button>
+              </div>
               <div class="space-y-3">
                 <div>
                   <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
