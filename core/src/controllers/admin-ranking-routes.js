@@ -81,6 +81,18 @@ function getAccountGains(accountId, range = 'day', liveStatus = null) {
   let fileHarvest = 0;
   let fileOps = 0;
 
+  // 若当前在线且已跨天（liveStatus 中的 date 与 todayKey 不一致），不采用旧会话增量
+  if (liveStatus && liveStatus.operations) {
+    const liveDate = liveStatus.date || currentStats?.date;
+    if (liveDate && liveDate !== todayKey) {
+      liveGold = 0;
+      liveExp = 0;
+      liveSteal = 0;
+      liveHarvest = 0;
+      liveOps = 0;
+    }
+  }
+
   if (currentStats && currentStats.date === todayKey) {
     if (currentStats.gains) {
       fileGold = Number(currentStats.gains.gold) || 0;
@@ -92,6 +104,13 @@ function getAccountGains(accountId, range = 'day', liveStatus = null) {
     fileSteal = Number(currentStats.operations?.steal) || 0;
     fileHarvest = Number(currentStats.operations?.harvest) || 0;
     fileOps = Object.values(currentStats.operations || {}).reduce((a, b) => Number(a || 0) + Number(b || 0), 0);
+  } else {
+    // 跨天后持久化文件尚未生成新日期，今日各项数据干净清零
+    fileGold = 0;
+    fileExp = 0;
+    fileSteal = 0;
+    fileHarvest = 0;
+    fileOps = 0;
   }
 
   const todayGold = Math.max(liveGold, fileGold);
@@ -227,15 +246,21 @@ function registerAdminRankingRoutes({ app, store, provider }) {
         });
       }
 
+      // 过滤：当金币或偷菜数据为 0 时不予上榜（仅展示有战绩产出的账号）
+      const qualified = rankings.filter(item => {
+        const val = Number(item.gains[metric] ?? item.gains.gold) || 0;
+        return val > 0;
+      });
+
       // 排序
-      rankings.sort((a, b) => {
+      qualified.sort((a, b) => {
         const valA = Number(a.gains[metric] ?? a.gains.gold) || 0;
         const valB = Number(b.gains[metric] ?? b.gains.gold) || 0;
         if (valB !== valA) return valB - valA;
         return Number(b.level || 0) - Number(a.level || 0);
       });
 
-      const rankedList = rankings.map((item, index) => ({
+      const rankedList = qualified.map((item, index) => ({
         rank: index + 1,
         ...item,
       }));

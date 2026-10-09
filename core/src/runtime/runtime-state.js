@@ -195,7 +195,7 @@ function createRuntimeState(deps) {
                     savedGold = Number(p.profile.gold) || 0;
                     savedExp = Number(p.profile.exp) || 0;
                 }
-                if (p.gains) {
+                if (p.date === todayKey && p.gains) {
                     savedGoldGained = Number(p.gains.gold) || 0;
                     savedExpGained = Number(p.gains.exp) || 0;
                 }

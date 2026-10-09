@@ -126,6 +126,19 @@ function checkAndResetDailyStats() {
     console.warn(`[统计] 检测到跨天，重置每日统计 (${currentDateKey} -> ${todayKey})`);
     Object.keys(operations).forEach(k => { operations[k] = 0; });
     tongQiGiftCount = 0;
+    // 跨天时将基准重置为当前最新资产，今日收益清零重新起跑
+    if (lastState.gold !== -1) {
+      initialState.gold = lastState.gold;
+      initialState.exp = lastState.exp;
+      initialState.coupon = lastState.coupon;
+    }
+    session.goldGained = 0;
+    session.expGained = 0;
+    session.couponGained = 0;
+    session.lastGoldGain = 0;
+    session.lastExpGain = 0;
+    currentDateKey = todayKey;
+    doSave();
   }
   currentDateKey = todayKey;
 }
@@ -234,7 +247,6 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
     tongQiGiftCount = Number(persisted.tongQiGiftCount) || Number(operations.tongQiGift) || 0;
     operations.tongQiGift = tongQiGiftCount;
 
-    // 恢复今日初始资产快照（让断线重连/重启后收益能连续计算，不被重置清零）
     if (persisted.initialState && persisted.initialState.gold !== null) {
       initialState.gold = Number(persisted.initialState.gold);
       initialState.exp = Number(persisted.initialState.exp);
@@ -247,7 +259,10 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
     }
     console.warn(`[统计] 已恢复今日统计与收益数据: ${JSON.stringify(persisted.operations)}, 今日收益: 金币+${session.goldGained}`);
   } else if (persisted) {
-    console.warn(`[统计] 日期已变更，重置统计 (${persisted.date} -> ${todayKey})`);
+    console.warn(`[统计] 日期已变更，跨天重置今日收益 (${persisted.date} -> ${todayKey})`);
+    session.goldGained = 0;
+    session.expGained = 0;
+    session.couponGained = 0;
   } else {
     console.warn('[统计] 新账号初始化，无历史数据');
   }
@@ -259,6 +274,11 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
     session.goldGained = Math.max(0, gold - initialState.gold);
     session.expGained = Math.max(0, exp - initialState.exp);
     session.couponGained = Math.max(0, coupon - initialState.coupon);
+  } else {
+    // 跨天或新登录：以当前最新金币/经验为基准，今日增量从 0 起步
+    session.goldGained = 0;
+    session.expGained = 0;
+    session.couponGained = 0;
   }
 }
 
