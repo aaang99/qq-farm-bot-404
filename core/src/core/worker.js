@@ -1067,6 +1067,10 @@ async function runFarmTick(autoConfig) {
     try {
         await runWithRequestPriority('farm', async () => {
             if (autoConfig.farm) await checkFarm();
+            // 常态农田巡查中，若开启了自动卖果实，自动兜底清空背包中的成熟果实
+            if (autoConfig.sell && !harvestSellRunning) {
+                try { await sellAllFruits(); } catch (_) {}
+            }
         });
     } catch { } finally {
         nextFarmRunAt = Date.now() + nextDelay;
@@ -1549,6 +1553,13 @@ async function startBot(config) {
             await openFertilizerGiftPacksSilently().catch(() => 0);
         }
 
+        // 启动后执行一次静默果实检查与出售（清理账号历史遗留果实）
+        workerScheduler.setTimeoutTask('startup_sell_fruits_once', 6000, async () => {
+            if (getAutomation().sell) {
+                try { await sellAllFruits(); } catch (_) {}
+            }
+        });
+
         // 延迟执行放虫放草
         workerScheduler.setTimeoutTask('bad_startup_once', 15000, async () => {
             try {
@@ -1779,7 +1790,23 @@ async function handleApiCall(msg) {
                 result = await sellItems(items.map(it => ({
                     id: it.id, count: it.count, uid: it.uid || 0
                 })));
-                if (totalCount > 0) recordOperation('sell', totalCount);
+                if (totalCount > 0) {
+                    recordOperation('sell', totalCount);
+                    // 手动出售成功后，从回包中提取金币增量，实时通知统计模块与事件总线
+                    try {
+                        let goldGain = 0;
+                        if (result && Array.isArray(result.get_items)) {
+                            for (const git of result.get_items) {
+                                const gid = Number(git.id);
+                                if (gid === 1001 || gid === 500001) goldGain += Number(git.count) || 0;
+                            }
+                        }
+                        if (goldGain > 0) {
+                            networkEvents.emit('sell', { gold: goldGain, count: totalCount });
+                            updateStatusGold((getUserState()?.gold || 0) + goldGain);
+                        }
+                    } catch (_) {}
+                }
                 break;
             }
             case 'setAutomation': {

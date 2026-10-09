@@ -539,7 +539,6 @@ async function sellAllFruits() {
     }
 
     if (fruits.length === 0) {
-      log('仓库', '无果实可出售');
       return;
     }
 
