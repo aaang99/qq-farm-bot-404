@@ -324,7 +324,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- 右侧：收益数值展示（偷菜榜用水平镜像偷取图标替代+号） -->
+            <!-- 右侧：收益数值展示 -->
             <div class="flex items-center gap-1.5 shrink-0 pl-1">
               <!-- 偷菜榜专属：水平镜像的偷取小手图标 -->
               <img
@@ -342,7 +342,14 @@ onMounted(() => {
               >
                 {{ currentMetric === 'gold' ? '+' : '' }}{{ formatNumber(item.gains[currentMetric] ?? item.gains.gold) }}
               </span>
-              <span class="text-xs text-gray-400 font-normal">
+              <!-- 金币榜时展示上方金币图标；偷菜榜时保留“次” -->
+              <img
+                v-if="currentMetric === 'gold'"
+                src="/game-config/resource-icons/gold.png"
+                alt="金币"
+                class="h-3.5 w-3.5 shrink-0 object-contain"
+              />
+              <span v-else class="text-xs text-gray-400 font-normal">
                 {{ METRICS.find(m => m.key === currentMetric)?.unit }}
               </span>
             </div>
