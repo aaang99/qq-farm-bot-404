@@ -151,7 +151,7 @@ onMounted(() => {
       <!-- 头部：标题与周期筛选 (日榜 / 周榜 / 月榜) -->
       <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
-          <!-- 专属农场风云榜领奖台图标（完美自适应主题色） -->
+          <!-- 专属本站排行领奖台图标（完美自适应主题色） -->
           <div class="h-8 w-8 sm:h-9 sm:w-9 flex items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/25 p-1.5 shadow-sm text-emerald-600 dark:text-emerald-400">
             <span
               class="h-full w-full bg-current inline-block"
@@ -159,7 +159,7 @@ onMounted(() => {
             />
           </div>
           <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-            农场风云榜
+            本站排行
           </h1>
         </div>
 
@@ -322,12 +322,13 @@ onMounted(() => {
 
     <!-- 农友专属脱敏生涯名片弹窗 (全通透液态毛玻璃) -->
     <Teleport to="body">
-      <div
-        v-if="showCareerModal"
-        class="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/45 backdrop-blur-md transition-opacity"
-        @click.self="showCareerModal = false"
-      >
-        <div class="liquid-card relative max-w-md w-full rounded-3xl p-5 sm:p-6 shadow-2xl border border-white/60 dark:border-white/15 overflow-hidden animate-zoom-in">
+      <Transition name="snappy-modal">
+        <div
+          v-if="showCareerModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/45 backdrop-blur-md"
+          @click.self="showCareerModal = false"
+        >
+        <div class="liquid-card relative max-w-md w-full rounded-3xl p-5 sm:p-6 shadow-2xl border border-white/60 dark:border-white/15 overflow-hidden">
           <!-- 关闭按钮 -->
           <button
             class="absolute top-4 right-4 h-8 w-8 flex items-center justify-center rounded-full bg-white/40 dark:bg-white/10 text-gray-500 hover:text-gray-800 dark:hover:text-white transition"
@@ -431,7 +432,8 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </Teleport>
+    </Transition>
+  </Teleport>
   </div>
 </template>
 
@@ -468,4 +470,35 @@ onMounted(() => {
   background: rgba(51, 65, 85, 0.65);
   border-color: rgba(255, 255, 255, 0.18);
 }
+
+/* 极速灵动弹出动画（150ms 弹力曲线，干脆利落） */
+.snappy-modal-enter-active,
+.snappy-modal-leave-active {
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.snappy-modal-enter-active .liquid-card,
+.snappy-modal-leave-active .liquid-card {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+  will-change: transform, opacity;
+}
+
+.snappy-modal-enter-from {
+  opacity: 0;
+}
+
+.snappy-modal-enter-from .liquid-card {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
+
+.snappy-modal-leave-to {
+  opacity: 0;
+}
+
+.snappy-modal-leave-to .liquid-card {
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+}
+
 </style>
