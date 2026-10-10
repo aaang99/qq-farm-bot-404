@@ -653,26 +653,16 @@ function openCareer() {
       <!-- 顶部：身份、等级、在线状态与运行时长 -->
       <div class="flex items-center justify-between gap-2 border-b border-gray-100/70 pb-2.5 dark:border-gray-800/70">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div class="relative shrink-0 pt-3">
-            <!-- 头像正上方微型精巧平台徽章：紧贴头像上边框外沿，绝不遮挡头像 -->
-            <span
-              v-if="status?.status?.platform"
-              class="absolute top-0 left-1/2 -translate-x-1/2 px-1 py-0 rounded text-[8.5px] font-extrabold uppercase tracking-tight z-20 shadow-xs leading-tight"
-              :class="status.status.platform === 'wx'
-                ? 'bg-emerald-500 text-white'
-                : 'bg-blue-500 text-white'"
-            >
-              {{ status.status.platform === 'wx' ? '微信' : 'QQ' }}
-            </span>
-            <div
-              class="relative h-10 w-10 flex items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
-              title="查看个人生涯记录"
-              @click="openCareer"
-            >
+          <div
+            class="relative h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
+            title="查看个人生涯记录"
+            @click="openCareer"
+          >
             <img
               v-if="!avatarLoadFailed"
               :src="currentAvatar"
               :alt="displayName"
+              referrerpolicy="no-referrer"
               class="h-full w-full object-cover"
               @error="avatarLoadFailed = true"
             >
@@ -683,8 +673,9 @@ function openCareer() {
               {{ displayName.slice(0, 1) }}
             </div>
           </div>
-        </div>
+
           <div class="min-w-0 flex-1">
+            <!-- 第一行：昵称 + 等级徽章 -->
             <div class="flex items-center gap-2">
               <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
                 {{ displayName }}
@@ -693,10 +684,22 @@ function openCareer() {
                 Lv.{{ status?.status?.level || 0 }}
               </span>
             </div>
-            <!-- 到期时间小字：灰色极简字体 -->
-            <div class="truncate text-xs text-gray-400 mt-0.5 font-mono">
-              <span v-if="userStore.userCard">到期：{{ userStore.expireTimeText }}</span>
-              <span v-else>永久有效</span>
+
+            <!-- 第二行：账号设置同款平台胶囊 + 到期时间 -->
+            <div class="mt-0.5 flex items-center gap-2">
+              <span
+                class="rounded px-1.5 py-0.2 text-[10px] font-medium leading-tight shrink-0"
+                :class="(currentAccount?.platform || status?.status?.platform) === 'wx'
+                  ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'"
+              >
+                {{ (currentAccount?.platform || status?.status?.platform) === 'wx' ? '微信' : 'QQ' }}
+              </span>
+
+              <span class="truncate text-xs text-gray-400 font-mono">
+                <span v-if="userStore.userCard">到期：{{ userStore.expireTimeText }}</span>
+                <span v-else>永久有效</span>
+              </span>
             </div>
           </div>
         </div>

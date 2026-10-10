@@ -202,9 +202,18 @@ function createRuntimeState(deps) {
             }
         }
 
+        let accountPlatform = 'qq';
+        if (aid) {
+            try {
+                const accs = store.getAccounts ? store.getAccounts() : null;
+                const found = (accs?.accounts || []).find(a => String(a.id) === aid);
+                if (found?.platform) accountPlatform = String(found.platform).toLowerCase();
+            } catch {}
+        }
+
         return {
             connection: { connected: false },
-            status: { name: savedName, level: savedLevel, gold: savedGold, exp: savedExp, platform: 'qq' },
+            status: { name: savedName, level: savedLevel, gold: savedGold, exp: savedExp, platform: accountPlatform },
             uptime: 0,
             operations: ops,
             totalSteal,

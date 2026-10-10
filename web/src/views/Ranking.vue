@@ -260,21 +260,12 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- 头像及在线状态点（贴合头像上边框微型平台标贴） -->
+              <!-- 头像及在线状态点（纯净头像，点击查看生涯名片） -->
               <div
-                class="relative shrink-0 cursor-pointer group pt-3"
+                class="relative shrink-0 cursor-pointer group"
                 title="点击查看农友生涯名片"
                 @click="openUserCareer(item)"
               >
-                <!-- 平台小标贴：贴合头像上边框外沿，绝不遮挡头像一分一毫 -->
-                <span
-                  class="absolute top-0 left-1/2 -translate-x-1/2 px-1 py-0 rounded text-[8.5px] font-extrabold uppercase tracking-tight z-10 shadow-xs leading-tight"
-                  :class="item.platform === 'wx'
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-blue-500 text-white'"
-                >
-                  {{ item.platform === 'wx' ? '微信' : 'QQ' }}
-                </span>
                 <img
                   :src="item.avatar || '/icon.png'"
                   alt="头像"
@@ -289,8 +280,9 @@ onMounted(() => {
                 />
               </div>
 
-              <!-- 昵称、等级、平台标签（纯文本）与用户归属（脱敏） -->
+              <!-- 右侧两行排版：完全复刻账号设置页视觉 -->
               <div class="flex flex-col min-w-0 justify-center">
+                <!-- 第一行：昵称 + 等级徽章 -->
                 <div class="flex items-center gap-1.5 flex-wrap">
                   <span
                     class="font-bold text-gray-900 dark:text-white truncate text-sm cursor-pointer hover:underline"
@@ -300,27 +292,36 @@ onMounted(() => {
                     {{ formatDisplayName(item) }}
                   </span>
                   
-                  <!-- 等级 -->
                   <span class="text-xs text-amber-500 font-bold font-mono shrink-0">
                     Lv.{{ item.level }}
                   </span>
-
-
                 </div>
 
-                <!-- 用户归属 -->
-                <div class="flex items-center text-[11px] text-gray-400 mt-0.5">
-                  <span class="flex items-center gap-1">
-                    <div class="i-carbon-user text-[11px] opacity-75" />
-                    <span>归属: <strong class="text-gray-600 dark:text-gray-300 font-medium font-mono">{{ formatMaskedUsername(item.username) }}</strong></span>
-                  </span>
-                  <!-- 本人账号归属标签 -->
+                <!-- 第二行：账号设置同款平台胶囊 + 归属用户 -->
+                <div class="mt-0.5 flex items-center gap-2">
                   <span
-                    v-if="isMyAccount(item)"
-                    class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm ring-1 ring-white/50 dark:ring-white/10"
+                    class="rounded px-1.5 py-0.2 text-[10px] font-medium leading-tight shrink-0"
+                    :class="item.platform === 'wx'
+                      ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'"
                   >
-                    我
+                    {{ item.platform === 'wx' ? '微信' : 'QQ' }}
                   </span>
+
+                  <!-- 用户归属 -->
+                  <div class="flex items-center text-[11px] text-gray-400 font-mono">
+                    <span class="flex items-center gap-0.5">
+                      <div class="i-carbon-user text-[11px] opacity-75 mr-0.5" />
+                      <span>归属: <strong class="text-gray-600 dark:text-gray-300 font-medium">{{ formatMaskedUsername(item.username) }}</strong></span>
+                    </span>
+                    <!-- 本人账号归属标签 -->
+                    <span
+                      v-if="isMyAccount(item)"
+                      class="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm ring-1 ring-white/50 dark:ring-white/10"
+                    >
+                      我
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
