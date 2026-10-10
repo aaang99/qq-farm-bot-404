@@ -9,6 +9,8 @@ import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import { useToastStore } from '@/stores/toast'
 import { getPlatformClass, getPlatformLabel } from '@/stores/account'
 
 
@@ -19,6 +21,41 @@ const statusStore = useStatusStore()
 const userStore = useUserStore()
 const bagStore = useBagStore()
 const { status, dailyGifts } = storeToRefs(statusStore)
+const toast = useToastStore()
+
+// 账号自续费弹窗状态
+const showRenewModal = ref(false)
+const renewCardCode = ref('')
+const renewLoading = ref(false)
+
+async function handleRenewCard() {
+  const code = renewCardCode.value.trim()
+  if (!code) {
+    toast.warning('请输入卡密')
+    return
+  }
+  renewLoading.value = true
+  try {
+    const res = await userStore.renew(code)
+    if (res.ok) {
+      const cardType = res.data?.cardType || 'time'
+      if (cardType === 'quota') {
+        toast.success(`充值成功！账号额度增加至 ${res.data?.accountLimit} 个`)
+      } else {
+        toast.success('续费成功！有效时长已成功顺延')
+      }
+      showRenewModal.value = false
+      renewCardCode.value = ''
+      await userStore.fetchUserInfo()
+    } else {
+      toast.error(res.error || '续费失败，请检查卡密有效性')
+    }
+  } catch (err: any) {
+    toast.error(err.response?.data?.error || err.message || '续费请求失败')
+  } finally {
+    renewLoading.value = false
+  }
+}
 
 const showBagModal = ref(false)
 const selectedBagAccount = ref<any>(null)
@@ -443,6 +480,74 @@ function accountAvatar(acc: any) {
       </div>
     </Teleport>
 
+    <!-- 账号续费专属液态毛玻璃浮层弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="showRenewModal"
+        class="fixed inset-0 z-[10060] flex items-center justify-center p-3 sm:p-4 bg-black/55 backdrop-blur-md"
+        @click.self="showRenewModal = false"
+      >
+        <div class="max-w-md w-full rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden" @click.stop>
+          <!-- 头部标题 + 关闭按钮 -->
+          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+            <div class="flex items-center gap-2">
+              <div class="h-8 w-8 flex items-center justify-center rounded-xl bg-orange-500/15 text-orange-500 font-bold">
+                <div class="i-carbon-ticket text-lg" />
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                账号充值续费
+              </h3>
+            </div>
+            <button
+              class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition"
+              @click="showRenewModal = false"
+            >
+              <div class="i-carbon-close text-xl" />
+            </button>
+          </div>
+
+          <!-- 内容表单区 -->
+          <div class="p-5 space-y-4">
+            <!-- 当前状态展示卡 -->
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 text-xs">
+              <span class="text-gray-500 dark:text-gray-400">当前账号到期状态</span>
+              <span class="font-bold text-orange-600 dark:text-orange-400 font-mono">
+                {{ userStore.expireTimeText }}
+              </span>
+            </div>
+
+            <div>
+              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                卡密兑换码
+              </label>
+              <BaseInput
+                v-model="renewCardCode"
+                placeholder="请输入购买获取的卡密兑换码"
+                @keyup.enter="handleRenewCard"
+              />
+              <p class="mt-1.5 text-[11px] text-gray-400 leading-relaxed">
+                支持使用【时长卡密】顺延账号有效期，或使用【额度卡密】增加可托管的农场账号上限。
+              </p>
+            </div>
+          </div>
+
+          <!-- 底部操作栏 -->
+          <div class="px-5 py-3.5 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/50">
+            <BaseButton variant="secondary" size="sm" @click="showRenewModal = false">
+              取消
+            </BaseButton>
+            <BaseButton
+              variant="primary"
+              size="sm"
+              :loading="renewLoading"
+              @click="handleRenewCard"
+            >
+              确认充值使用
+            </BaseButton>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 </template>
 
 <style scoped>

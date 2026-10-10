@@ -406,16 +406,10 @@ onMounted(async () => {
 
 <template>
   <div class="settings-page">
-    <div class="mb-4">
-      <h1 class="text-2xl text-gray-900 font-bold dark:text-gray-100">
-        账号
-      </h1>
-    </div>
-
-    <div class="border border-gray-200 rounded-lg bg-white shadow dark:border-gray-700 dark:bg-gray-800">
 
 
-      <div class="p-4">
+    <div class="liquid-card relative overflow-hidden rounded-2xl p-4 sm:p-5 shadow-sm">
+      <div>
         <!-- 账号管理 -->
         <AccountSettingsTab
           v-if="activeTab === 'account'"
@@ -671,3 +665,14 @@ onMounted(async () => {
     </Teleport>
 
 </template>
+
+
+<style scoped>
+.liquid-card {
+  background: var(--liquid-glass-bg);
+  backdrop-filter: var(--liquid-glass-blur);
+  -webkit-backdrop-filter: var(--liquid-glass-blur);
+  border: 1px solid var(--liquid-glass-border);
+  box-shadow: var(--liquid-glass-shadow);
+}
+</style>

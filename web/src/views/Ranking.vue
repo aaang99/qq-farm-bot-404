@@ -296,15 +296,7 @@ onMounted(() => {
                     Lv.{{ item.level }}
                   </span>
 
-                  <!-- 平台标签 -->
-                  <span
-                    class="px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider shrink-0"
-                    :class="item.platform === 'wx'
-                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                      : 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30'"
-                  >
-                    {{ item.platform === 'wx' ? '微信' : 'QQ' }}
-                  </span>
+
                 </div>
 
                 <!-- 用户归属 -->
