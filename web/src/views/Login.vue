@@ -337,7 +337,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
     0 24px 60px rgba(15, 23, 42, 0.16),
     0 4px 16px rgba(0, 0, 0, 0.08);
-  animation: cardFloat 6s ease-in-out infinite;
+  /* 完全静止稳定，不浮动 */
 }
 
 @keyframes cardFloat {
@@ -469,7 +469,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     0 8px 24px rgba(59, 130, 246, 0.12);
 }
 
-.inp:focus-within .inp-ico { color: #ffffff; background: linear-gradient(135deg, #3b82f6, #2563eb); transform: scale(1.06); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
+.inp:focus-within .inp-ico { color: #ffffff; background: linear-gradient(135deg, #3b82f6, #2563eb);  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
 
 .input-hint { font-size: 0.74rem; color: #ef4444; padding-left: 6px; font-weight: 500; }
 
