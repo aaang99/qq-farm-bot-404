@@ -1303,98 +1303,106 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div
-            v-if="showEditModal"
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm"
-            @click.self="showEditModal = false"
-          >
-            <div class="max-w-md w-full max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:p-6" @click.stop>
-              <div class="mb-4 flex items-center justify-between border-b border-gray-100 pb-2.5 dark:border-gray-700">
-                <h2 class="text-base sm:text-lg text-gray-900 font-bold dark:text-white truncate">
-                  编辑用户：{{ selectedUser?.username }}
-                </h2>
-                <button
-                  class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                  @click="showEditModal = false"
+    <!-- 编辑用户模态弹窗：Teleport 到 body，全屏居中，固定标题与操作栏，中间滚动 -->
+    <Teleport to="body">
+      <div
+        v-if="showEditModal"
+        class="fixed inset-0 z-[10050] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md"
+        @click.self="showEditModal = false"
+      >
+        <div class="max-w-md w-full max-h-[82vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden" @click.stop>
+          <!-- 弹窗固定顶部标题与关闭按钮 -->
+          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
+            <h2 class="text-base sm:text-lg text-gray-900 font-bold dark:text-white truncate">
+              编辑用户：{{ selectedUser?.username }}
+            </h2>
+            <button
+              class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 transition"
+              @click="showEditModal = false"
+            >
+              <div class="i-carbon-close text-xl" />
+            </button>
+          </div>
+
+          <!-- 弹窗内部滚动表单区 -->
+          <div class="flex-1 overflow-y-auto p-5 space-y-3.5 custom-scrollbar">
+            <div>
+              <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                用户名
+              </label>
+              <BaseInput
+                v-model="editForm.newUsername"
+                placeholder="输入新用户名（留空则不修改）"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                用户名只能包含字母、数字和下划线，长度3-32位
+              </p>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                新密码
+              </label>
+              <BaseInput
+                v-model="editForm.password"
+                type="password"
+                placeholder="输入新密码（留空则不修改）"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                密码长度至少6位，需包含大写字母、小写字母、数字、特殊符号中的至少两种
+              </p>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                账号额度
+              </label>
+              <BaseInput
+                v-model.number="editForm.accountLimit"
+                type="number"
+                min="1"
+                placeholder="可添加的农场账号数量"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                用户最多可添加的农场账号数量
+              </p>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                过期时间
+              </label>
+              <div class="flex items-center gap-3">
+                <input
+                  v-model="editForm.isPermanent"
+                  type="checkbox"
+                  class="border-gray-300 rounded text-blue-600 focus:ring-blue-500"
                 >
-                  <div class="i-carbon-close text-xl" />
-                </button>
+                <span class="text-sm text-gray-600 dark:text-gray-400">永久有效</span>
               </div>
-              <div class="space-y-3">
-                <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    用户名
-                  </label>
-                  <BaseInput
-                    v-model="editForm.newUsername"
-                    placeholder="输入新用户名（留空则不修改）"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    用户名只能包含字母、数字和下划线，长度3-32位
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    新密码
-                  </label>
-                  <BaseInput
-                    v-model="editForm.password"
-                    type="password"
-                    placeholder="输入新密码（留空则不修改）"
-                  />
-                  <p class="dark:text-gray-400" mt-1 text-xs text-gray-500>
-                    密码长度至少6位，需包含大写字母、小写字母、数字、特殊符号中的至少两种
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    账号额度
-                  </label>
-                  <BaseInput
-                    v-model.number="editForm.accountLimit"
-                    type="number"
-                    min="1"
-                    placeholder="可添加的账号数量"
-                  />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    用户最多可添加的农场账号数量
-                  </p>
-                </div>
-                <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    过期时间
-                  </label>
-                  <div class="flex items-center gap-3">
-                    <input
-                      v-model="editForm.isPermanent"
-                      type="checkbox"
-                      class="border-gray-300 rounded text-blue-600 focus:ring-blue-500"
-                    >
-                    <span class="text-sm text-gray-600 dark:text-gray-400">永久有效</span>
-                  </div>
-                  <input
-                    v-if="!editForm.isPermanent"
-                    v-model="editForm.expiresAt"
-                    type="datetime-local"
-                    class="mt-2 w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm dark:border-gray-600 focus:border-blue-500 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                </div>
-              </div>
-              <div class="mt-5 flex justify-end space-x-3">
-                <BaseButton variant="secondary" size="sm" @click="showEditModal = false">
-                  取消
-                </BaseButton>
-                <BaseButton
-                  variant="primary"
-                  size="sm"
-                  :disabled="editLoading"
-                  @click="handleEdit"
-                >
-                  {{ editLoading ? '保存中...' : '保存' }}
-                </BaseButton>
-              </div>
+              <input
+                v-if="!editForm.isPermanent"
+                v-model="editForm.expiresAt"
+                type="datetime-local"
+                class="mt-2 w-full border border-gray-200 rounded-lg bg-white px-3 py-2 text-sm dark:border-gray-600 focus:border-blue-500 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
             </div>
           </div>
+
+          <!-- 弹窗固定底部操作栏（取消与保存按钮永远可见，绝不被截断） -->
+          <div class="px-5 py-3.5 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 bg-gray-50/50 dark:bg-gray-800/50 shrink-0">
+            <BaseButton variant="secondary" size="sm" @click="showEditModal = false">
+              取消
+            </BaseButton>
+            <BaseButton
+              variant="primary"
+              size="sm"
+              :disabled="editLoading"
+              @click="handleEdit"
+            >
+              {{ editLoading ? '保存中...' : '保存修改' }}
+            </BaseButton>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
           <!-- 清理到期用户确认弹窗 -->
           <div
