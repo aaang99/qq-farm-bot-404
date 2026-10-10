@@ -308,11 +308,11 @@ onMounted(() => {
                     {{ item.platform === 'wx' ? '微信' : 'QQ' }}
                   </span>
 
-                  <!-- 用户归属 -->
+                  <!-- 用户归属（已精简：去除“归属:”字样，只留小图标与用户名） -->
                   <div class="flex items-center text-[11px] text-gray-400 font-mono">
-                    <span class="flex items-center gap-0.5">
-                      <div class="i-carbon-user text-[11px] opacity-75 mr-0.5" />
-                      <span>归属: <strong class="text-gray-600 dark:text-gray-300 font-medium">{{ formatMaskedUsername(item.username) }}</strong></span>
+                    <span class="flex items-center gap-1">
+                      <div class="i-carbon-user text-[11px] opacity-75" />
+                      <strong class="text-gray-600 dark:text-gray-300 font-medium">{{ formatMaskedUsername(item.username) }}</strong>
                     </span>
                     <!-- 本人账号归属标签 -->
                     <span
