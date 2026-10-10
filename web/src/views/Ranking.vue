@@ -260,12 +260,21 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- 头像及在线状态点（支持点击弹出生涯名片） -->
+              <!-- 头像及在线状态点（贴合头像上边框微型平台标贴） -->
               <div
-                class="relative shrink-0 cursor-pointer group"
+                class="relative shrink-0 cursor-pointer group pt-3"
                 title="点击查看农友生涯名片"
                 @click="openUserCareer(item)"
               >
+                <!-- 平台小标贴：贴合头像上边框外沿，绝不遮挡头像一分一毫 -->
+                <span
+                  class="absolute top-0 left-1/2 -translate-x-1/2 px-1 py-0 rounded text-[8.5px] font-extrabold uppercase tracking-tight z-10 shadow-xs leading-tight"
+                  :class="item.platform === 'wx'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-blue-500 text-white'"
+                >
+                  {{ item.platform === 'wx' ? '微信' : 'QQ' }}
+                </span>
                 <img
                   :src="item.avatar || '/icon.png'"
                   alt="头像"

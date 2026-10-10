@@ -156,10 +156,22 @@ function accountAvatar(acc: any) {
 
 <template>
   <div class="space-y-4">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <h3 class="text-lg text-gray-900 font-bold dark:text-gray-100">
-        账号管理
-      </h3>
+    <div class="flex flex-col gap-3">
+      <!-- 顶层单行：左边“账号管理”大标题，右侧红圈处常驻“账号续费”高质感按钮 -->
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100">
+          账号管理
+        </h3>
+        <!-- 账号续费专属按钮（红圈正正好的位置，高光微立体） -->
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-md shadow-orange-500/25 hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer"
+          @click="showRenewModal = true"
+        >
+          <div class="i-carbon-ticket text-sm" />
+          <span>账号续费</span>
+        </button>
+      </div>
       <div class="flex flex-wrap gap-2">
         <BaseButton
           variant="outline"

@@ -653,11 +653,22 @@ function openCareer() {
       <!-- 顶部：身份、等级、在线状态与运行时长 -->
       <div class="flex items-center justify-between gap-2 border-b border-gray-100/70 pb-2.5 dark:border-gray-800/70">
         <div class="flex items-center gap-2.5 min-w-0">
-          <div
-            class="relative h-10 w-10 flex shrink-0 items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
-            title="查看个人生涯记录"
-            @click="openCareer"
-          >
+          <div class="relative shrink-0 pt-3">
+            <!-- 头像正上方微型精巧平台徽章：紧贴头像上边框外沿，绝不遮挡头像 -->
+            <span
+              v-if="status?.status?.platform"
+              class="absolute top-0 left-1/2 -translate-x-1/2 px-1 py-0 rounded text-[8.5px] font-extrabold uppercase tracking-tight z-20 shadow-xs leading-tight"
+              :class="status.status.platform === 'wx'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-blue-500 text-white'"
+            >
+              {{ status.status.platform === 'wx' ? '微信' : 'QQ' }}
+            </span>
+            <div
+              class="relative h-10 w-10 flex items-center justify-center overflow-hidden rounded-xl ring-2 ring-white/80 cursor-pointer shadow-md transition-transform duration-200 hover:scale-105 active:scale-95 bg-white/40"
+              title="查看个人生涯记录"
+              @click="openCareer"
+            >
             <img
               v-if="!avatarLoadFailed"
               :src="currentAvatar"
@@ -672,6 +683,7 @@ function openCareer() {
               {{ displayName.slice(0, 1) }}
             </div>
           </div>
+        </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
               <span class="truncate text-base font-bold sm:text-lg" :title="displayName">
