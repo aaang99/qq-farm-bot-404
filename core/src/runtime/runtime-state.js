@@ -195,9 +195,14 @@ function createRuntimeState(deps) {
                     savedGold = Number(p.profile.gold) || 0;
                     savedExp = Number(p.profile.exp) || 0;
                 }
-                if (p.date === todayKey && p.gains) {
-                    savedGoldGained = Number(p.gains.gold) || 0;
-                    savedExpGained = Number(p.gains.exp) || 0;
+                // 概览页离线时呈现全生命周期累积净盈亏：当前金币 - 添加初始基准
+                const baseGold = Number(p.accountBaseline?.gold ?? p.initialState?.gold);
+                const baseExp = Number(p.accountBaseline?.exp ?? p.initialState?.exp);
+                if (Number.isFinite(baseGold)) {
+                    savedGoldGained = savedGold - baseGold;
+                }
+                if (Number.isFinite(baseExp)) {
+                    savedExpGained = savedExp - baseExp;
                 }
             }
         }

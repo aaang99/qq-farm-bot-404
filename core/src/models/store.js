@@ -202,6 +202,16 @@ function deleteAccountCaches(accountId) {
     deleteFriendListCache(accountId);
     deleteFriendDogInfoCache(accountId);
     deleteKnownFriendGidsCache(accountId);
+    try {
+        const path = require('node:path');
+        const statsDir = path.join(process.env.FARM_DATA_DIR || path.join(__dirname, '../../data'), 'stats');
+        const f1 = path.join(statsDir, accountId + '.json');
+        const f2 = path.join(statsDir, 'history_' + accountId + '.json');
+        const f3 = path.join(statsDir, 'career_' + accountId + '.json');
+        if (fs.existsSync(f1)) fs.unlinkSync(f1);
+        if (fs.existsSync(f2)) fs.unlinkSync(f2);
+        if (fs.existsSync(f3)) fs.unlinkSync(f3);
+    } catch {}
 }
 
 // ==================== 允许的策略 ====================

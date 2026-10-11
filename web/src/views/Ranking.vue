@@ -78,7 +78,7 @@ const RANGES = [
 ] as const
 
 const METRICS = [
-  { key: 'gold', label: '金币', imgIcon: '/game-config/resource-icons/gold.png', unit: '金币' },
+  { key: 'gold', label: '收益', imgIcon: '/game-config/resource-icons/gold.png', unit: '金币' },
   { key: 'steal', label: '偷菜', imgIcon: '/game-config/career/steal.png', unit: '次' },
 ] as const
 
@@ -202,7 +202,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 维度切换胶囊 (金币 / 偷菜) -->
+      <!-- 维度切换胶囊 (收益 / 偷菜) -->
       <div class="mt-2.5 flex flex-wrap gap-1.5 pt-2.5 border-t border-gray-200/40 dark:border-gray-700/40">
         <button
           v-for="m in METRICS"
@@ -344,7 +344,7 @@ onMounted(() => {
               >
                 {{ currentMetric === 'gold' ? '+' : '' }}{{ formatNumber(item.gains[currentMetric] ?? item.gains.gold) }}
               </span>
-              <!-- 金币榜时展示上方金币图标；偷菜榜时保留“次” -->
+              <!-- 收益榜时展示上方金币图标；偷菜榜时保留“次” -->
               <img
                 v-if="currentMetric === 'gold'"
                 src="/game-config/resource-icons/gold.png"

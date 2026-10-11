@@ -6,7 +6,7 @@ const { readJsonFile, writeJsonFileAtomic } = require('./json-db');
 
 function getStatsFilePath(accountId) {
   const baseDir = process.env.FARM_DATA_DIR || path.join(__dirname, '../../data');
-  return path.join(baseDir, 'stats', `${accountId  }.json`);
+  return path.join(baseDir, 'stats', `${accountId}.json`);
 }
 
 /** 获取 YYYY-MM-DD 格式的当天日期键 */
@@ -66,14 +66,20 @@ const lastState = {
   coupon: -1
 };
 
-/** 初始值（会话开始时记录） */
-const initialState = {
+/** 账号全生命周期初始值（从添加账号起记录，绝不随跨天重置，供概览页累积计算） */
+const accountBaseline = {
   gold: null,
   exp: null,
   coupon: null
 };
 
-/** 会话期间累计增益 */
+/** 今日纯收入（只计正向增加，不计损耗，跨天清零，供排行榜使用） */
+const dailyIncome = {
+  gold: 0,
+  exp: 0
+};
+
+/** 会话期间累计增益（概览页呈现：自添加账号以来的生命周期净增减） */
 const session = {
   goldGained: 0,
   expGained: 0,
@@ -118,23 +124,17 @@ function getTongQiGiftLimit() {
   return null; // 当前无限制
 }
 
-/** 检查是否跨天，若跨天则重置每日统计 */
+/** 检查是否跨天，若跨天则重置每日统计（只重置操作数与排行榜今日收入，绝不重置账号全周期初始基准） */
 function checkAndResetDailyStats() {
   if (!currentAccountId) return;
   const todayKey = getTodayKey();
   if (currentDateKey && currentDateKey !== todayKey) {
-    console.warn(`[统计] 检测到跨天，重置每日统计 (${currentDateKey} -> ${todayKey})`);
+    console.warn(`[统计] 检测到跨天，重置每日操作与排行榜今日收入 (${currentDateKey} -> ${todayKey})`);
     Object.keys(operations).forEach(k => { operations[k] = 0; });
     tongQiGiftCount = 0;
-    // 跨天时将基准重置为当前最新资产，今日收益清零重新起跑
-    if (lastState.gold !== -1) {
-      initialState.gold = lastState.gold;
-      initialState.exp = lastState.exp;
-      initialState.coupon = lastState.coupon;
-    }
-    session.goldGained = 0;
-    session.expGained = 0;
-    session.couponGained = 0;
+    // 排行榜今日纯收入清零
+    dailyIncome.gold = 0;
+    dailyIncome.exp = 0;
     session.lastGoldGain = 0;
     session.lastExpGain = 0;
     currentDateKey = todayKey;
@@ -157,7 +157,7 @@ function doSave() {
   if (!currentAccountId) return;
   const todayKey = getTodayKey();
   const ops = { ...operations };
-  const init = { ...initialState };
+  const base = { ...accountBaseline };
   const last = { ...lastState };
   let profile = {};
   try {
@@ -178,13 +178,20 @@ function doSave() {
     date: todayKey,
     operations: ops,
     tongQiGiftCount,
-    initialState: init,
+    // 账号全生命周期基准保持永久存储（兼顾历史兼容）
+    accountBaseline: base,
+    initialState: base,
     lastState: last,
     profile: (profile.level || profile.name) ? profile : (prev.profile || {}),
+    // 排行榜每日纯收入（只计正向，不计损耗）
     gains: {
-      gold: Math.max(0, session.goldGained),
-      exp: Math.max(0, session.expGained),
-      coupon: Math.max(0, session.couponGained),
+      gold: Math.max(0, dailyIncome.gold),
+      exp: Math.max(0, dailyIncome.exp),
+      coupon: 0,
+    },
+    dailyIncome: {
+      gold: Math.max(0, dailyIncome.gold),
+      exp: Math.max(0, dailyIncome.exp),
     },
     savedAt: Date.now()
   };
@@ -193,9 +200,6 @@ function doSave() {
 
 /**
  * 初始化统计（设置初始金币/经验/点券）
- * @param {number} gold - 当前金币
- * @param {number} exp - 当前经验
- * @param {number} coupon - 当前点券（默认 0）
  */
 function initStats(gold, exp, coupon = 0) {
   const g = Number.isFinite(Number(gold)) ? Number(gold) : 0;
@@ -204,9 +208,11 @@ function initStats(gold, exp, coupon = 0) {
   lastState.gold = g;
   lastState.exp = e;
   lastState.coupon = c;
-  initialState.gold = g;
-  initialState.exp = e;
-  initialState.coupon = c;
+  if (accountBaseline.gold === null) {
+    accountBaseline.gold = g;
+    accountBaseline.exp = e;
+    accountBaseline.coupon = c;
+  }
 }
 
 /**
@@ -220,15 +226,18 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
   currentAccountId = accountId;
   const todayKey = getTodayKey();
   currentDateKey = todayKey;
-  // 重置运行时状态
+
+  // 重置运行时日常操作
   Object.keys(operations).forEach(k => { operations[k] = 0; });
   tongQiGiftCount = 0;
+  dailyIncome.gold = 0;
+  dailyIncome.exp = 0;
   lastState.gold = -1;
   lastState.exp = -1;
   lastState.coupon = -1;
-  initialState.gold = null;
-  initialState.exp = null;
-  initialState.coupon = null;
+  accountBaseline.gold = null;
+  accountBaseline.exp = null;
+  accountBaseline.coupon = null;
   session.goldGained = 0;
   session.expGained = 0;
   session.couponGained = 0;
@@ -236,8 +245,23 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
   session.lastGoldGain = 0;
   accountOnlineAt = Date.now();
 
-  // 尝试恢复今日持久化数据
+  // 读取持久化文件
   const persisted = loadPersistedStats(accountId);
+
+  // 1. 恢复账号全生命周期基准（只要存在就绝不重置，从添加账号一直累积）
+  const savedBase = persisted?.accountBaseline || persisted?.initialState;
+  if (savedBase && savedBase.gold !== null && savedBase.gold !== undefined) {
+    accountBaseline.gold = Number(savedBase.gold);
+    accountBaseline.exp = Number(savedBase.exp);
+    accountBaseline.coupon = Number(savedBase.coupon);
+  } else {
+    // 首次录入账号初始资产
+    accountBaseline.gold = Number.isFinite(Number(gold)) ? Number(gold) : 0;
+    accountBaseline.exp = Number.isFinite(Number(exp)) ? Number(exp) : 0;
+    accountBaseline.coupon = Number.isFinite(Number(coupon)) ? Number(coupon) : 0;
+  }
+
+  // 2. 恢复当天数据（操作数 & 排行榜今日纯收入）
   if (persisted && persisted.date === todayKey) {
     Object.keys(persisted.operations || {}).forEach(k => {
       if (operations[k] !== undefined) {
@@ -247,39 +271,18 @@ function initStatsWithPersistence(accountId, gold, exp, coupon = 0) {
     tongQiGiftCount = Number(persisted.tongQiGiftCount) || Number(operations.tongQiGift) || 0;
     operations.tongQiGift = tongQiGiftCount;
 
-    if (persisted.initialState && persisted.initialState.gold !== null) {
-      initialState.gold = Number(persisted.initialState.gold);
-      initialState.exp = Number(persisted.initialState.exp);
-      initialState.coupon = Number(persisted.initialState.coupon);
+    if (persisted.dailyIncome) {
+      dailyIncome.gold = Number(persisted.dailyIncome.gold) || 0;
+      dailyIncome.exp = Number(persisted.dailyIncome.exp) || 0;
+    } else if (persisted.gains) {
+      dailyIncome.gold = Number(persisted.gains.gold) || 0;
+      dailyIncome.exp = Number(persisted.gains.exp) || 0;
     }
-    if (persisted.gains) {
-      session.goldGained = Number(persisted.gains.gold) || 0;
-      session.expGained = Number(persisted.gains.exp) || 0;
-      session.couponGained = Number(persisted.gains.coupon) || 0;
-    }
-    console.warn(`[统计] 已恢复今日统计与收益数据: ${JSON.stringify(persisted.operations)}, 今日收益: 金币+${session.goldGained}`);
-  } else if (persisted) {
-    console.warn(`[统计] 日期已变更，跨天重置今日收益 (${persisted.date} -> ${todayKey})`);
-    session.goldGained = 0;
-    session.expGained = 0;
-    session.couponGained = 0;
-  } else {
-    console.warn('[统计] 新账号初始化，无历史数据');
   }
+
   initStats(gold, exp, coupon);
-  if (persisted && persisted.date === todayKey && persisted.initialState && persisted.initialState.gold !== null) {
-    initialState.gold = Number(persisted.initialState.gold);
-    initialState.exp = Number(persisted.initialState.exp);
-    initialState.coupon = Number(persisted.initialState.coupon);
-    session.goldGained = Math.max(0, gold - initialState.gold);
-    session.expGained = Math.max(0, exp - initialState.exp);
-    session.couponGained = Math.max(0, coupon - initialState.coupon);
-  } else {
-    // 跨天或新登录：以当前最新金币/经验为基准，今日增量从 0 起步
-    session.goldGained = 0;
-    session.expGained = 0;
-    session.couponGained = 0;
-  }
+  // 重新计算全生命周期累计盈亏
+  recomputeSessionTotals(gold, exp, coupon);
 }
 
 /**
@@ -291,9 +294,11 @@ function updateStats(gold, exp) {
   if (lastState.gold === -1) lastState.gold = gold;
   if (lastState.exp === -1) lastState.exp = exp;
 
-  // 金币增量
+  // 金币增量（排行榜：仅累计正向收入，不计升级土地/买种子等损耗）
   if (gold > lastState.gold) {
-    session.lastGoldGain = gold - lastState.gold;
+    const gain = gold - lastState.gold;
+    session.lastGoldGain = gain;
+    dailyIncome.gold = (dailyIncome.gold || 0) + gain;
   } else if (gold < lastState.gold) {
     session.lastGoldGain = 0;
   }
@@ -303,12 +308,12 @@ function updateStats(gold, exp) {
   if (exp > lastState.exp) {
     const gain = exp - lastState.exp;
     const now = Date.now();
-    // 如果和上次增量相同且时间间隔 < 5s，跳过（去重）
     if (gain === session.lastExpGain && now - (session.lastExpTime || 0) < 5000) {
       // skip duplicate
     } else {
       session.lastExpGain = gain;
       session.lastExpTime = now;
+      dailyIncome.exp = (dailyIncome.exp || 0) + gain;
     }
   } else {
     session.lastExpGain = 0;
@@ -334,16 +339,17 @@ function resetSessionGains() {
   session.lastExpTime = 0;
 }
 
-/** 根据初始值重新计算会话总增益 */
+/** 根据全生命周期初始值重新计算概览页累计总盈亏（当前资产 - 添加账号初始资产，带正负） */
 function recomputeSessionTotals(gold, exp, coupon) {
-  if (initialState.gold === null || initialState.exp === null || initialState.coupon === null) {
-    initialState.gold = gold;
-    initialState.exp = exp;
-    initialState.coupon = coupon;
+  if (accountBaseline.gold === null || accountBaseline.gold === undefined) {
+    accountBaseline.gold = gold;
+    accountBaseline.exp = exp;
+    accountBaseline.coupon = coupon;
   }
-  session.goldGained = gold - initialState.gold;
-  session.expGained = exp - initialState.exp;
-  session.couponGained = coupon - initialState.coupon;
+  // 概览页指标：支持正负（+绿色盈利 / -红色损耗），不随日期清零，自添加账号一直累积
+  session.goldGained = gold - accountBaseline.gold;
+  session.expGained = exp - accountBaseline.exp;
+  session.couponGained = coupon - accountBaseline.coupon;
 }
 
 /**
@@ -370,7 +376,7 @@ function getStats(farmUser, userState, connected, limits) {
   const d = Number.isFinite(Number(diamond)) ? Number(diamond) : 0;
   const gb = Number.isFinite(Number(goldBean)) ? Number(goldBean) : 0;
 
-  // 如果已连接，更新内部追踪并重新计算会话增益
+  // 如果已连接，更新内部追踪并重新计算全生命周期盈亏
   if (connected) {
     updateStats(g, e);
     recomputeSessionTotals(g, e, c);
@@ -397,9 +403,14 @@ function getStats(farmUser, userState, connected, limits) {
     operations: ops,
     tongQiGiftCount,
     tongQiGiftLimit: null,
+    // 概览页呈现：全生命周期净盈亏（从添加账号累积至今，带+-）
     sessionExpGained: session.expGained,
     sessionGoldGained: session.goldGained,
     sessionCouponGained: session.couponGained,
+    // 排行榜呈现：今日纯收入（只计正向增加，不计损耗，每日清零）
+    dailyGoldIncome: dailyIncome.gold,
+    dailyExpIncome: dailyIncome.exp,
+    dailyIncome: { ...dailyIncome },
     lastExpGain: session.lastExpGain,
     lastGoldGain: session.lastGoldGain,
     limits

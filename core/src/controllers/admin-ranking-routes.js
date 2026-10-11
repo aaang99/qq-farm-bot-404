@@ -68,8 +68,9 @@ function getAccountGains(accountId, range = 'day', liveStatus = null) {
   let liveOps = 0;
 
   if (liveStatus && typeof liveStatus === 'object') {
-    liveGold = Math.max(0, Number(liveStatus.sessionGoldGained) || 0);
-    liveExp = Math.max(0, Number(liveStatus.sessionExpGained) || 0);
+    // 优先读取今日纯收入（只计正向增加，不计损耗），兼容兜底 sessionGoldGained
+    liveGold = Math.max(0, Number(liveStatus.dailyGoldIncome ?? liveStatus.dailyIncome?.gold ?? liveStatus.sessionGoldGained) || 0);
+    liveExp = Math.max(0, Number(liveStatus.dailyExpIncome ?? liveStatus.dailyIncome?.exp ?? liveStatus.sessionExpGained) || 0);
     liveSteal = Number(liveStatus.operations?.steal) || 0;
     liveHarvest = Number(liveStatus.operations?.harvest) || 0;
     liveOps = Object.values(liveStatus.operations || {}).reduce((a, b) => Number(a || 0) + Number(b || 0), 0);
@@ -94,7 +95,10 @@ function getAccountGains(accountId, range = 'day', liveStatus = null) {
   }
 
   if (currentStats && currentStats.date === todayKey) {
-    if (currentStats.gains) {
+    if (currentStats.dailyIncome) {
+      fileGold = Number(currentStats.dailyIncome.gold) || 0;
+      fileExp = Number(currentStats.dailyIncome.exp) || 0;
+    } else if (currentStats.gains) {
       fileGold = Number(currentStats.gains.gold) || 0;
       fileExp = Number(currentStats.gains.exp) || 0;
     } else if (currentStats.initialState && currentStats.lastState) {
