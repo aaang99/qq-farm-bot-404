@@ -11,7 +11,29 @@ function registerAdminPetRoutes({ app, provider, store, getAccountIdFromRequest,
     try { res.json({ ok: true, data: await operation(id, req.body || {}) }); }
     catch (error) { sendProviderError(res, error); }
   });
-  route('get', '/api/dog/info', id => provider.getPetOverview(id));
+  route('get', '/api/dog/info', async id => {
+    const overview = await provider.getPetOverview(id);
+    const store = require('../models/store');
+    const autoCfg = store.getAutomation ? store.getAutomation(id) : {};
+    return {
+      ...overview,
+      autoBuyFood: autoCfg.auto_buy_dog_food === true,
+      autoFeedDog: autoCfg.auto_feed_dog === true,
+    };
+  });
+
+  route('post', '/api/dog/auto-config', async (id, body) => {
+    const store = require('../models/store');
+    const autoCfg = store.getAutomation ? store.getAutomation(id) : {};
+    if (body.autoBuyFood !== undefined) {
+      autoCfg.auto_buy_dog_food = body.autoBuyFood === true;
+    }
+    if (body.autoFeedDog !== undefined) {
+      autoCfg.auto_feed_dog = body.autoFeedDog === true;
+    }
+    store.setAutomation(id, autoCfg);
+    return { ok: true, autoBuyFood: autoCfg.auto_buy_dog_food, autoFeedDog: autoCfg.auto_feed_dog };
+  });
   route('post', '/api/dog/activate', (id, body) => provider.activateDog(id, Number(body.dogId)));
   route('post', '/api/dog/deploy', (id, body) => provider.deployDog(id, Number(body.dogId)));
   route('post', '/api/dog/withdraw', id => provider.withdrawDog(id));

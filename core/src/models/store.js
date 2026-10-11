@@ -112,12 +112,12 @@ function updateFriendDogInfoCache(accountId, gid, dogInfo) {
     if (!accountId || !numericGid) return false;
     const cache = readFriendDogInfoCache(accountId) || {};
     const dogId = Number(dogInfo && dogInfo.dogId) || 0;
-    if (dogId === 90021) {
+    if (dogId > 0) {
         const current = cache[numericGid];
-        if (current && Number(current.dogId) === dogId && current.dogName === (dogInfo.dogName || '护主犬')) {
+        if (current && Number(current.dogId) === dogId && current.dogName === (dogInfo.dogName || '')) {
             return false;
         }
-        cache[numericGid] = { dogId, dogName: dogInfo.dogName || '护主犬' };
+        cache[numericGid] = { dogId, dogName: dogInfo.dogName || '' };
     } else if (Object.hasOwn(cache, numericGid)) {
         delete cache[numericGid];
     } else {
