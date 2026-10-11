@@ -315,9 +315,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.25);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: transparent;
   pointer-events: none;
 }
 
