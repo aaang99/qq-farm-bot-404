@@ -3,6 +3,7 @@ import type { Card, UserCard } from '@/stores/user'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import AdminSystemPanel from '@/components/admin/AdminSystemPanel.vue'
+import AdminSmtpConfigCard from '@/components/admin/AdminSmtpConfigCard.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import DeviceProtocolCard from '@/components/settings/DeviceProtocolCard.vue'
 import { useUserSettings } from '@/composables/settings/useUserSettings'
@@ -698,10 +699,16 @@ const {
   fillRandomImei,
   applyDevicePreset,
   fetchDeviceProtocol,
+  localOffline,
+  offlineSaving,
+  offlineTesting,
+  handleSaveOffline,
+  handleTestOffline,
+  syncLocalOfflineSettings,
 } = useUserSettings(showAlert)
 
 const systemSettingsSaving = ref(false)
-const anySystemSaving = computed(() => systemSettingsSaving.value || systemConfigSaving.value || captureConfigSaving.value || deviceProtocolSaving.value)
+const anySystemSaving = computed(() => systemSettingsSaving.value || systemConfigSaving.value || captureConfigSaving.value || deviceProtocolSaving.value || offlineSaving.value)
 
 async function saveSystemSettings() {
   if (anySystemSaving.value)
@@ -717,14 +724,15 @@ async function saveSystemSettings() {
       deviceId: String(deviceProtocolForm.value.deviceId || '').trim(),
       imei: String(deviceProtocolForm.value.imei || '').trim(),
     }
-    const [systemResult, captureResult, deviceResult] = await Promise.all([
+    const [systemResult, captureResult, deviceResult, offlineResult] = await Promise.all([
       api.post('/api/admin/system-config', { ...localSystemConfig.value, confirmed: true }),
       api.post('/api/admin/capture-config', { ...localCaptureConfig.value, confirmed: true }),
       api.post('/api/user/device-protocol', devicePayload),
+      api.post('/api/settings/offline-reminder', { ...localOffline.value, isGlobalAdminSmtp: true }),
     ])
-    if (!systemResult.data?.ok || !captureResult.data?.ok || !deviceResult.data?.ok)
+    if (!systemResult.data?.ok || !captureResult.data?.ok || !deviceResult.data?.ok || !offlineResult.data?.ok)
       throw new Error('部分系统配置保存失败')
-    await Promise.all([loadSystemConfig(), loadCaptureConfig(), fetchDeviceProtocol()])
+    await Promise.all([loadSystemConfig(), loadCaptureConfig(), fetchDeviceProtocol(), syncLocalOfflineSettings()])
     showAlert('系统配置已统一保存并生效')
   }
   catch (error: any) {
@@ -741,6 +749,7 @@ watch(activeTab, (newTab) => {
 })
 
 onMounted(async () => {
+  syncLocalOfflineSettings()
   document.addEventListener('click', closeExportMenu)
   if (activeTab.value === 'card') await fetchCards()
   else if (activeTab.value === 'user') await fetchUsers()
@@ -1480,6 +1489,15 @@ onUnmounted(() => {
             @random-mac="fillRandomDeviceMac"
             @random-device-id="fillRandomDeviceId"
             @random-imei="fillRandomImei"
+          />
+
+          <!-- 全局发信邮箱 (SMTP) 管理配置 -->
+          <AdminSmtpConfigCard
+            v-model:config="localOffline"
+            :saving="offlineSaving"
+            :testing="offlineTesting"
+            @save="handleSaveOffline"
+            @test="handleTestOffline"
           />
 
           <AdminSystemPanel

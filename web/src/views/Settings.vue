@@ -9,6 +9,8 @@ import AccountSettingsTab from '@/components/settings/AccountSettingsTab.vue'
 import AutoCodeRefreshCard from '@/components/settings/AutoCodeRefreshCard.vue'
 import DeviceProtocolCard from '@/components/settings/DeviceProtocolCard.vue'
 import OfflineReminderCard from '@/components/settings/OfflineReminderCard.vue'
+import UserEmailNotificationCard from '@/components/settings/UserEmailNotificationCard.vue'
+import AdminSmtpConfigCard from '@/components/admin/AdminSmtpConfigCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import { useAccountSettings } from '@/composables/settings/useAccountSettings'
 import { useAutomationSettings } from '@/composables/settings/useAutomationSettings'
@@ -221,6 +223,16 @@ const {
   getAutomationSettings: () => localAutomationSettings.value,
   showAlert,
 })
+
+const isCurrentAccountWx = computed(() => {
+  const acc = (accounts.value || []).find((a: any) => String(a.id) === String(currentAccountId.value || ''))
+  return (acc?.platform || '').toLowerCase() === 'wx'
+})
+
+async function onAutoCodeRefreshToggle(val: boolean) {
+  localAutoCodeRefresh.value.enabled = val
+  await saveAutoCodeRefreshSettings()
+}
 
 const accountSettingsSaving = ref(false)
 const autoCodeRefreshSaving = ref(false)
@@ -547,6 +559,15 @@ onMounted(async () => {
             @refresh="runAutoCodeRefreshNow"
           />
 
+          <!-- 管理员全局发信邮箱 (SMTP) 配置卡片 -->
+          <AdminSmtpConfigCard
+            v-model:config="localOffline"
+            :saving="offlineSaving"
+            :testing="offlineTesting"
+            @save="handleSaveOffline"
+            @test="handleTestOffline"
+          />
+
           <AdminSystemPanel
             v-model:local-system-config="localSystemConfig"
             v-model:local-capture-config="localCaptureConfig"
@@ -576,21 +597,22 @@ onMounted(async () => {
       @cancel="closeDefaultPlanConfirmation"
     />
 
-    <ConfirmModal
-      :show="modalVisible"
-      :title="modalConfig.title"
-      :message="modalConfig.message"
-      :type="modalConfig.type"
-      :is-alert="modalConfig.isAlert"
-      confirm-text="知道了"
-      @confirm="modalVisible = false"
-      @close="modalVisible = false"
-      @cancel="modalVisible = false"
-    />
   </div>
 
     <!-- 液态玻璃配置浮层 (含账号设置与通知设置，右上角有关闭按钮) -->
     <Teleport to="body">
+      <!-- 保证 ConfirmModal 在同一个 Teleport 并且在最高层级渲染 -->
+      <ConfirmModal
+        :show="modalVisible"
+        :title="modalConfig.title"
+        :message="modalConfig.message"
+        :type="modalConfig.type"
+        :is-alert="modalConfig.isAlert"
+        confirm-text="知道了"
+        @confirm="modalVisible = false"
+        @close="modalVisible = false"
+        @cancel="modalVisible = false"
+      />
       <div v-if="showDrawerModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-3 sm:p-5 backdrop-blur-sm" @click.self="closeDrawer">
         <div class="max-h-[88vh] max-w-2xl w-full flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-white/70 dark:border-white/10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl animate-scale-in">
           <!-- 浮层头部 (单一标题 + 右上角关闭按钮) -->
@@ -602,10 +624,27 @@ onMounted(async () => {
               >
                 <div :class="drawerActiveTab === 'account-config' ? 'i-carbon-settings' : 'i-carbon-notification'" />
               </div>
-              <div>
-                <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">
-                  {{ drawerActiveTab === 'account-config' ? '账号功能配置' : '掉线通知配置' }}
-                </h3>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">
+                    {{ drawerActiveTab === 'account-config' ? '账号功能配置' : '掉线通知配置' }}
+                  </h3>
+                  <!-- 微信账号专属：自动刷新code 灰色小字 + 胶囊开关 -->
+                  <div
+                    v-if="drawerActiveTab === 'account-config' && isCurrentAccountWx"
+                    class="inline-flex items-center gap-1.5 ml-1 sm:ml-2 px-2 py-0.5 rounded-full bg-gray-100/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 shadow-inner"
+                    title="开启后按设定间隔自动获取新 Code 并重启账号，保障长期运行不掉线"
+                  >
+                    <span class="text-[11px] text-gray-400 font-medium select-none">自动刷新code</span>
+                    <input
+                      type="checkbox"
+                      :checked="localAutoCodeRefresh.enabled"
+                      :disabled="autoCodeRefreshSaving"
+                      class="relative h-4 w-7 rounded-full bg-gray-300 dark:bg-gray-600 appearance-none cursor-pointer transition-colors duration-200 ease-in-out focus:outline-none checked:bg-emerald-500 checked:hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:h-3 after:w-3 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 checked:after:translate-x-3"
+                      @change="onAutoCodeRefreshToggle(($event.target as HTMLInputElement).checked)"
+                    />
+                  </div>
+                </div>
                 <p v-if="currentAccountName" class="text-[11px] text-gray-400">
                   正在配置：{{ currentAccountName }}
                 </p>
@@ -640,22 +679,12 @@ onMounted(async () => {
             />
 
             <div v-else-if="drawerActiveTab === 'notification'" class="space-y-4">
-              <div class="flex items-center justify-between border-b border-gray-100/70 pb-2 dark:border-gray-800/70">
-                <span class="text-xs text-gray-500">
-                  {{ currentAccountName ? `正在配置通知：${currentAccountName}` : '全局通知设置' }}
-                </span>
-                <BaseButton size="sm" :loading="offlineSaving" :disabled="offlineTesting" @click="handleSaveOffline">
-                  保存通知设置
-                </BaseButton>
-              </div>
-              <OfflineReminderCard
+              <UserEmailNotificationCard
                 v-model:config="localOffline"
-                :channel-options="channelOptions"
-                :current-channel-doc-url="currentChannelDocUrl"
+                :current-account-name="currentAccountName"
                 :saving="offlineSaving"
                 :testing="offlineTesting"
-                :show-save="false"
-                @open-docs="openChannelDocs"
+                @save="handleSaveOffline"
                 @test="handleTestOffline"
               />
             </div>

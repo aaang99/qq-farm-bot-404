@@ -19,20 +19,28 @@ function getOfflineReminderConfig(store, currentUser, body) {
   return { ...(saved || {}), ...(body || {}) };
 }
 
-async function sendOfflineReminderTest(config) {
+async function sendOfflineReminderTest(config, store) {
   const { sendPushooMessage, sendSmtpEmail } = require("../services/push");
   const channel = String(config.channel || "smtp").trim().toLowerCase();
   if (channel === "smtp") {
-    const smtpHost = String(config.smtpHost || "").trim();
-    const smtpPort = Number(config.smtpPort) || 465;
-    const smtpUser = String(config.smtpUser || "").trim();
-    const smtpPass = String(config.smtpPass || "").trim();
-    const senderName = String(config.senderName || "").trim();
-    const recipientEmail = String(config.recipientEmail || "").trim();
-    if (!smtpHost) return { error: "SMTP服务器地址不能为空" };
-    if (!smtpUser) return { error: "邮箱账号不能为空" };
-    if (!smtpPass) return { error: "授权码不能为空" };
-    if (!recipientEmail) return { error: "收件人邮箱不能为空" };
+    // 优先取传入参数，如为空则继承全局管理员配置的 SMTP 参数
+    const globalSmtp = (store && typeof store.getOfflineReminder === 'function') ? (store.getOfflineReminder() || {}) : {};
+    const smtpHost = String(config.smtpHost || globalSmtp.smtpHost || "").trim();
+    const smtpPort = Number(config.smtpPort || globalSmtp.smtpPort) || 465;
+    const smtpUser = String(config.smtpUser || globalSmtp.smtpUser || "").trim();
+    const smtpPass = String(config.smtpPass || globalSmtp.smtpPass || "").trim();
+    const senderName = String(config.senderName || globalSmtp.senderName || "QQ农场助手监控").trim();
+    let recipientEmail = String(config.recipientEmail || "").trim();
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      return { error: "系统管理员尚未在【系统配置】中配置全局发信邮箱 (SMTP)，请先配置发信参数！" };
+    }
+    if (!recipientEmail) {
+      // 若留空，默认发给自己
+      recipientEmail = smtpUser;
+    } else if (!recipientEmail.includes("@")) {
+      // 如果用户在测试框里只填了纯QQ号或数字，自动补全为 @qq.com！
+      recipientEmail = `${recipientEmail}@qq.com`;
+    }
 
     return sendSmtpEmail({
       smtpHost,
@@ -137,8 +145,10 @@ function buildSettingsPayload(store, accountId, currentUser) {
         : "level",
     ui: store.getUI(),
     offlineReminder:
-      store.getOfflineReminder && currentUser
-        ? store.getOfflineReminder(currentUser.username)
+      store.getOfflineReminder
+        ? (currentUser && (currentUser.role === 'admin' || currentUser.username === 'admin')
+            ? store.getOfflineReminder()
+            : store.getOfflineReminder(currentUser?.username))
         : offlineReminderDefault,
   };
 }
@@ -303,6 +313,38 @@ function registerAdminSettingsRoutes({
     }
   });
 
+  // 管理员全局 SMTP 保存专属接口
+  app.post("/api/admin/global-smtp", async (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      if (!currentUser || currentUser.role !== "admin") {
+        return res.status(403).json({ ok: false, error: "仅管理员可配置全局发件邮箱" });
+      }
+      const body = req.body && typeof req.body === "object" ? req.body : {};
+      if (store.setOfflineReminder) {
+        const saved = store.setOfflineReminder({ ...body, channel: 'smtp' });
+        return res.json({ ok: true, data: saved, message: "系统全局发信邮箱已成功保存并生效！" });
+      }
+      res.status(500).json({ ok: false, error: "保存失败" });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
+  // 管理员全局 SMTP 读取专属接口
+  app.get("/api/admin/global-smtp", async (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      if (!currentUser || currentUser.role !== "admin") {
+        return res.status(403).json({ ok: false, error: "无权访问" });
+      }
+      const smtp = store.getOfflineReminder ? store.getOfflineReminder() : {};
+      res.json({ ok: true, data: smtp || {} });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
   app.post("/api/settings/offline-reminder", async (req, res) => {
     try {
       const body = req.body && typeof req.body === "object" ? req.body : {};
@@ -320,6 +362,7 @@ function registerAdminSettingsRoutes({
       const data = store.setOfflineReminder
         ? store.setOfflineReminder(body, currentUser.username)
         : {};
+
       if (Number(body.offlineDeleteSec || 0) > 0) {
         logger.warn("更新下线提醒离线删除设置", {
           user: currentUser.username,
@@ -339,7 +382,7 @@ function registerAdminSettingsRoutes({
       const currentUser = req.currentUser;
       const body = req.body && typeof req.body === "object" ? req.body : {};
       const config = getOfflineReminderConfig(store, currentUser, body);
-      const result = await sendOfflineReminderTest(config);
+      const result = await sendOfflineReminderTest(config, store);
       if (!result) {
         return res
           .status(400)

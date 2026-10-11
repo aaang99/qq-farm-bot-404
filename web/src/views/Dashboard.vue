@@ -649,7 +649,7 @@ function openCareer() {
 <template>
   <div class="flex flex-col gap-5 pt-1 md:h-full md:min-h-0 md:overflow-hidden md:pt-2">
     <!-- 一体化全景控制台卡片（集成：身份、等级、经验、核心资产、物资、图鉴） -->
-    <div class="ui-card-elevated relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all shadow-md">
+    <div class="ui-card relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all shadow-md">
       <!-- 顶部：身份、等级、在线状态与运行时长 -->
       <div class="flex items-center justify-between gap-2 border-b border-gray-100/70 pb-2.5 dark:border-gray-800/70">
         <div class="flex items-center gap-2.5 min-w-0">
@@ -832,7 +832,7 @@ function openCareer() {
 
     <div class="flex flex-1 flex-col items-stretch gap-5 md:min-h-0 md:flex-row">
       <div class="flex flex-1 flex-col gap-5 md:min-h-0 md:w-3/4">
-        <div class="ui-card-elevated flex flex-1 flex-col rounded-lg p-3 md:min-h-0 md:overflow-hidden sm:p-5">
+        <div class="ui-card flex flex-1 flex-col rounded-lg p-3 md:min-h-0 md:overflow-hidden sm:p-5">
           <div class="mb-4 flex flex-col gap-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h3 class="flex items-center gap-2 text-lg font-medium">

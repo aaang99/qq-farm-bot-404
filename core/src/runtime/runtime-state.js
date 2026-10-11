@@ -195,14 +195,22 @@ function createRuntimeState(deps) {
                     savedGold = Number(p.profile.gold) || 0;
                     savedExp = Number(p.profile.exp) || 0;
                 }
-                // 概览页离线时呈现全生命周期累积净盈亏：当前金币 - 添加初始基准
+                // 离线时：若尚未拉取到当前实际余额（savedGold <= 0），不计算误判负增量；仅在有记录上次有效余额时才计算
+                const lastRecordedGold = Number(p.lastState?.gold ?? p.profile?.gold ?? 0);
                 const baseGold = Number(p.accountBaseline?.gold ?? p.initialState?.gold);
                 const baseExp = Number(p.accountBaseline?.exp ?? p.initialState?.exp);
-                if (Number.isFinite(baseGold)) {
-                    savedGoldGained = savedGold - baseGold;
+                if (lastRecordedGold > 0 && Number.isFinite(baseGold)) {
+                    savedGold = lastRecordedGold;
+                    savedGoldGained = lastRecordedGold - baseGold;
+                } else {
+                    savedGoldGained = 0;
                 }
-                if (Number.isFinite(baseExp)) {
-                    savedExpGained = savedExp - baseExp;
+                const lastRecordedExp = Number(p.lastState?.exp ?? p.profile?.exp ?? 0);
+                if (lastRecordedExp > 0 && Number.isFinite(baseExp)) {
+                    savedExp = lastRecordedExp;
+                    savedExpGained = lastRecordedExp - baseExp;
+                } else {
+                    savedExpGained = 0;
                 }
             }
         }

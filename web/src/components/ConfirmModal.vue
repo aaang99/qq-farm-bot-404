@@ -68,12 +68,13 @@ function confirm() {
 </script>
 
 <template>
-  <Transition name="confirm-modal">
-    <div
-      v-if="show"
-      class="confirm-modal-overlay"
-      @click="closeModal"
-    >
+  <Teleport to="body">
+    <Transition name="confirm-modal">
+      <div
+        v-if="show"
+        class="confirm-modal-overlay"
+        @click="closeModal"
+      >
       <div
         class="confirm-modal"
         :data-tone="modalTone"
@@ -113,15 +114,16 @@ function confirm() {
           </BaseButton>
         </div>
       </div>
-    </div>
-  </Transition>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
 .confirm-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 200000 !important;
   display: flex;
   align-items: center;
   justify-content: center;
