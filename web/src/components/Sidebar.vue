@@ -272,19 +272,19 @@ watch(
 
 /* ===== 液态玻璃导航按钮 ===== */
 .liquid-nav-btn {
-  background: rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7), 0 2px 8px rgba(15, 23, 42, 0.03);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 2px 8px rgba(15, 23, 42, 0.02);
   color: var(--theme-text);
   opacity: 0.88;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 
 .dark .liquid-nav-btn {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
 }
 
 .liquid-nav-btn:hover {
@@ -304,9 +304,9 @@ watch(
 
 /* 图标容器小水滴 */
 .nav-icon-box {
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6);
   color: color-mix(in srgb, var(--theme-text) 75%, transparent);
 }
 

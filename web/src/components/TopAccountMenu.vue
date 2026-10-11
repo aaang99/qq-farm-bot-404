@@ -195,17 +195,23 @@ function updateDropdownPos() {
     return
 
   const rect = el.getBoundingClientRect()
-  const viewportGap = 8
+  const viewportGap = 12
   const width = Math.min(300, window.innerWidth - viewportGap * 2)
-  const left = Math.min(
-    Math.max(viewportGap, rect.right - width),
-    window.innerWidth - width - viewportGap,
-  )
+  // 严格右对齐：菜单的右边框与触发按钮的右边框完全重合
+  const margin = 12
+  const maxW = Math.min(290, window.innerWidth - margin * 2)
+  let l = rect.right - maxW
+  if (l < margin) {
+    l = margin
+  }
+  if (l + maxW > window.innerWidth - margin) {
+    l = window.innerWidth - maxW - margin
+  }
 
   dropdownPos.value = {
-    top: rect.bottom + viewportGap,
-    left,
-    width,
+    top: rect.bottom + 6,
+    left: l,
+    width: maxW,
   }
 }
 
@@ -236,18 +242,18 @@ async function handleAccountSaved() {
 
 <template>
   <div class="relative">
-    <!-- 液态玻璃头像胶囊框：无文字，只留头像与下拉指示微标 -->
+    <!-- 液态玻璃灵动按钮：平常为圆形收缩球只留展开符号，点击展开为椭圆胶囊并露出精致头像与在线指示灯 -->
     <button
       ref="trigger"
-      class="liquid-capsule-btn flex items-center gap-1.5 rounded-full px-2 py-1.5 transition-all duration-200"
-      title="切换账号"
+      type="button"
+      class="liquid-capsule-btn"
+      :class="{ 'is-expanded': showAccountDropdown }"
+      :title="showAccountDropdown ? '收起账号菜单' : '展开账号列表'"
       @click="toggleDropdown"
     >
-      <div class="relative h-8 w-8 flex-none">
-        <div
-          class="h-full w-full flex items-center justify-center overflow-hidden rounded-full cursor-pointer ring-2 ring-white/90 shadow-sm transition-transform duration-200 hover:scale-105"
-          
-        >
+      <!-- 头像容器：使用专用 CSS 类保证平滑伸展动画 -->
+      <div class="trigger-avatar-wrapper" :class="{ 'is-visible': showAccountDropdown }">
+        <div class="trigger-avatar-inner">
           <img
             v-if="shouldShowAvatar(currentAccount)"
             :src="currentAvatarSrc"
@@ -255,21 +261,22 @@ async function handleAccountSaved() {
             class="h-full w-full object-cover"
             @error="markAvatarFailed(currentAccount)"
           >
-          <span v-else class="text-xs font-bold text-gray-700 dark:text-gray-200">
+          <span v-else class="text-[11px] font-bold text-gray-700 dark:text-gray-200">
             {{ avatarInitial(currentAccount) }}
           </span>
         </div>
-        <!-- 运行在线指示灯 -->
+        <!-- 运行在线小红绿灯 -->
         <span
           v-if="currentAccount"
-          class="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-gray-900 pointer-events-none"
-          :class="isOnline ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-red-400'"
+          class="trigger-online-dot"
+          :class="isOnline ? 'is-online' : 'is-offline'"
         />
       </div>
 
+      <!-- 展开符号小图标 -->
       <div
-        class="i-carbon-chevron-down text-xs text-gray-500 opacity-70 transition-transform duration-200 mr-1"
-        :class="{ 'rotate-180': showAccountDropdown }"
+        class="trigger-arrow i-carbon-chevron-down"
+        :class="{ 'is-rotated': showAccountDropdown }"
       />
     </button>
 
@@ -385,8 +392,17 @@ async function handleAccountSaved() {
 </template>
 
 <style scoped>
-/* 液态玻璃胶囊框 */
+/* 灵动液态玻璃收缩/展开按钮 */
 .liquid-capsule-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -394,6 +410,13 @@ async function handleAccountSaved() {
   box-shadow:
     inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
     0 4px 16px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              padding 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              gap 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              background 0.2s ease;
 }
 
 .dark .liquid-capsule-btn {
@@ -405,74 +428,98 @@ async function handleAccountSaved() {
 .liquid-capsule-btn:hover {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(255, 255, 255, 1);
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 1),
-    0 6px 20px rgba(15, 23, 42, 0.09);
 }
 
 .dark .liquid-capsule-btn:hover {
   background: rgba(51, 65, 85, 0.75);
 }
 
-/* 下拉菜单面板 */
-.liquid-dropdown-menu {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
+/* 展开态：由正圆形流畅伸展为 82px 的精致椭圆胶囊 */
+.liquid-capsule-btn.is-expanded {
+  width: 76px !important;
+  height: 38px !important;
+  padding: 0 8px 0 6px !important;
+  gap: 6px !important;
+  border-radius: 9999px !important;
   box-shadow:
     inset 0 1px 2px rgba(255, 255, 255, 1),
-    0 20px 50px rgba(15, 23, 42, 0.15);
+    0 8px 24px rgba(15, 23, 42, 0.12);
 }
 
-.dark .liquid-dropdown-menu {
-  background: rgba(15, 23, 42, 0.88);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+/* 伸展展开的头像外壳 */
+.trigger-avatar-wrapper {
+  position: relative;
+  width: 0;
+  max-width: 0;
+  height: 28px;
+  opacity: 0;
+  transform: scale(0.3);
+  flex-shrink: 0;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              max-width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.22s ease,
+              transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.liquid-account-row {
-  border: 1px solid transparent;
+.trigger-avatar-wrapper.is-visible {
+  width: 28px !important;
+  max-width: 28px !important;
+  opacity: 1;
+  transform: scale(1);
+  overflow: visible;
+  pointer-events: auto;
 }
 
-.liquid-account-row:hover {
-  background: rgba(255, 255, 255, 0.7);
-  border-color: rgba(255, 255, 255, 0.85);
+.trigger-avatar-inner {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.6);
 }
 
-.dark .liquid-account-row:hover {
-  background: rgba(30, 41, 59, 0.7);
+.trigger-online-dot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  border: 1.5px solid #ffffff;
+  pointer-events: none;
+}
+.trigger-online-dot.is-online {
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+.trigger-online-dot.is-offline {
+  background-color: #f87171;
 }
 
-.liquid-account-row-active {
-  background: color-mix(in srgb, var(--theme-primary) 12%, rgba(255, 255, 255, 0.8)) !important;
-  border-color: color-mix(in srgb, var(--theme-primary) 35%, transparent) !important;
+/* 箭头旋转微动画 */
+.trigger-arrow {
+  font-size: 15px;
+  color: #4b5563;
+  opacity: 0.8;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  flex-shrink: 0;
 }
-
-.liquid-btn-action {
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+.dark .trigger-arrow {
+  color: #d1d5db;
 }
-
-.dark .liquid-btn-action {
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.liquid-btn-action:hover {
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.3);
-  border-radius: 2px;
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
+.trigger-arrow.is-rotated {
+  transform: rotate(180deg);
+  opacity: 1;
+  color: var(--theme-primary, #10b981);
 }
 </style>

@@ -22,6 +22,16 @@ function getOfflineReminderConfig(store, currentUser, body) {
 async function sendOfflineReminderTest(config, store) {
   const { sendPushooMessage, sendSmtpEmail } = require("../services/push");
   const channel = String(config.channel || "smtp").trim().toLowerCase();
+  if (channel === "pushplus") {
+    const token = String(config.token || "").trim();
+    if (!token) return { error: "请填写 PushPlus Token！" };
+    return sendPushooMessage({
+      channel: "pushplus",
+      token,
+      title: "【QQ农场】掉线提醒测试",
+      content: "这是一条来自 QQ农场助手的测试推送，收到说明您的微信 PushPlus 推送配置成功！"
+    });
+  }
   if (channel === "smtp") {
     // 优先取传入参数，如为空则继承全局管理员配置的 SMTP 参数
     const globalSmtp = (store && typeof store.getOfflineReminder === 'function') ? (store.getOfflineReminder() || {}) : {};
@@ -380,6 +390,9 @@ function registerAdminSettingsRoutes({
   app.post("/api/settings/offline-reminder/test", async (req, res) => {
     try {
       const currentUser = req.currentUser;
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.username !== 'admin')) {
+        return res.status(403).json({ ok: false, error: "为保障推送通道稳定，仅系统管理员可发起测试推送" });
+      }
       const body = req.body && typeof req.body === "object" ? req.body : {};
       const config = getOfflineReminderConfig(store, currentUser, body);
       const result = await sendOfflineReminderTest(config, store);

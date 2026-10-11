@@ -740,7 +740,9 @@ const DEFAULT_CAPTURE_CONFIG = {
     embedded: true,
     apiBase: 'http://127.0.0.1:8450',
     apiToken: '',
-    autoImportQqGids: true
+    autoImportQqGids: true,
+    qqQrEnabled: true,
+    wxQrEnabled: true
 };
 
 let accountFallbackConfig = (() => {
@@ -1089,14 +1091,16 @@ function loadGlobalConfig() {
             };
         }
 
-        // Code/GID 抓取服务配置
+        // Code/GID 抓取服务与登录方式配置
         if (data.captureConfig && typeof data.captureConfig === 'object') {
             globalConfig.captureConfig = {
                 enabled: data.captureConfig.enabled === true,
                 embedded: data.captureConfig.embedded !== false,
                 apiBase: String(data.captureConfig.apiBase || DEFAULT_CAPTURE_CONFIG.apiBase).trim(),
                 apiToken: String(data.captureConfig.apiToken || '').trim(),
-                autoImportQqGids: data.captureConfig.autoImportQqGids !== false
+                autoImportQqGids: data.captureConfig.autoImportQqGids !== false,
+                qqQrEnabled: data.captureConfig.qqQrEnabled !== false,
+                wxQrEnabled: data.captureConfig.wxQrEnabled !== false
             };
         }
 
@@ -1895,7 +1899,9 @@ function setCaptureConfig(config) {
         apiToken: config.apiToken === undefined || config.apiToken === null || config.apiToken === ''
             ? current.apiToken
             : String(config.apiToken).trim(),
-        autoImportQqGids: config.autoImportQqGids !== false
+        autoImportQqGids: config.autoImportQqGids !== false,
+        qqQrEnabled: config.qqQrEnabled !== false,
+        wxQrEnabled: config.wxQrEnabled !== false
     };
     saveGlobalConfig();
     return { ...globalConfig.captureConfig };

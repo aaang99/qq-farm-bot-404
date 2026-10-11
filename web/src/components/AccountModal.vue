@@ -49,6 +49,7 @@ const wxChecking = ref(false)
 const errorMessage = ref('')
 const wxAccountName = ref('')
 const qqEnabled = ref(false)
+const wxEnabled = ref(true)
 const qqAccountName = ref('')
 const qqTaskId = ref('')
 const qqQrImage = ref('')
@@ -265,11 +266,15 @@ async function loadCaptureConfig() {
   try {
     const { data } = await api.get('/api/capture/config')
     captureEnabled.value = data?.ok && data.data?.enabled === true
+    wxEnabled.value = data?.ok ? data.data?.wxQrEnabled !== false : true
     if (!captureEnabled.value && activeTab.value === 'capture')
+      activeTab.value = 'manual'
+    if (!wxEnabled.value && activeTab.value === 'wx')
       activeTab.value = 'manual'
   }
   catch {
     captureEnabled.value = false
+    wxEnabled.value = true
     if (activeTab.value === 'capture')
       activeTab.value = 'manual'
   }
@@ -586,6 +591,7 @@ watch(activeTab, (tab) => {
             手动填码
           </button>
           <button
+            v-if="wxEnabled"
             class="flex-1 py-2 text-center text-sm font-medium transition-colors"
             :class="activeTab === 'wx' ? 'border-b-2' : 'opacity-60'"
             :style="{

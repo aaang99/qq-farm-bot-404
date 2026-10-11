@@ -84,6 +84,37 @@ function registerAdminAccountRoutes({
   store,
   updateRuntimeConfig,
 }) {
+  // 获取指定账号的专属设备协议
+  app.get("/api/accounts/:id/device-protocol", (req, res) => {
+    try {
+      const accountId = req.params.id;
+      if (!accountId || !canAccessAccount(req, accountId)) {
+        return res.status(403).json({ ok: false, error: "无权访问此账号" });
+      }
+      const config = store.getDeviceProtocolForAccount ? store.getDeviceProtocolForAccount(accountId) : {};
+      res.json({ ok: true, config });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
+  // 保存指定账号的专属设备协议
+  app.post("/api/accounts/:id/device-protocol", (req, res) => {
+    try {
+      const accountId = req.params.id;
+      if (!accountId || !canAccessAccount(req, accountId)) {
+        return res.status(403).json({ ok: false, error: "无权访问此账号" });
+      }
+      const accounts = provider.getAccounts ? provider.getAccounts() : { accounts: [] };
+      const account = findAccountByRef(accounts.accounts || [], accountId);
+      const username = (account && account.username) || (req.currentUser && req.currentUser.username) || '';
+      const config = store.setUserDeviceProtocol(req.body || {}, username);
+      res.json({ ok: true, config });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
   app.get("/api/accounts", (req, res) => {
     try {
       const currentUser = req.currentUser;

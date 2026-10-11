@@ -159,10 +159,10 @@ const localCaptureConfig = defineModel<CaptureConfig>('localCaptureConfig', { re
         </div>
       </div>
 
-      <div v-if="props.section === 'capture'" class="border border-gray-200 rounded-lg bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <div v-if="props.section === 'capture'" class="border border-gray-200 rounded-lg bg-white p-4 dark:border-gray-700 dark:bg-gray-800 space-y-4">
         <h4 class="mb-3 flex items-center gap-2 text-base text-gray-900 font-bold dark:text-gray-100">
-          <div class="i-carbon-data-connected" />
-          Code/GID 抓取服务
+          <div class="i-carbon-data-connected text-blue-500" />
+          抓包登录服务管理
         </h4>
 
         <div class="grid mb-3 gap-3 md:grid-cols-3">

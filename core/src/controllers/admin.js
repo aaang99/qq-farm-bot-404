@@ -596,7 +596,7 @@ function startAdminServer(dataProvider) {
     updateRuntimeConfig,
   });
   registerAdminQrLoginRoutes({ app });
-  registerAdminNapcatLoginRoutes({ app });
+  registerAdminNapcatLoginRoutes({ app, store });
   registerAdminProxyRoutes({ app, logger: adminLogger });
   registerSpaFallback(app, webDist);
 

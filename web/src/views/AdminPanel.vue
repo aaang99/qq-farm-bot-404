@@ -21,6 +21,12 @@ const rawSavedTab = localStorage.getItem('admin-active-tab')
 const activeTab = ref<'card' | 'user' | 'system'>(
   (rawSavedTab === 'user' || rawSavedTab === 'system') ? rawSavedTab : 'card',
 )
+const systemSubTab = ref<'gateway' | 'device' | 'smtp' | 'capture'>('gateway')
+const systemSubTabs = [
+  { key: 'gateway', label: '运行网关', icon: 'i-carbon-network-3' },
+  { key: 'smtp', label: '发件邮箱', icon: 'i-carbon-email' },
+  { key: 'capture', label: '抓包登录', icon: 'i-carbon-data-connected' },
+] as const
 
 watch(activeTab, (newTab) => {
   localStorage.setItem('admin-active-tab', newTab)
@@ -1446,74 +1452,93 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 应用宝 YYB 服务管理中心 -->
-        <div v-else-if="activeTab === 'system'" class="space-y-5">
-          <div class="sticky top-0 z-10 flex items-center justify-between border border-gray-200 rounded-xl bg-white/95 p-4 shadow-sm backdrop-blur dark:border-gray-700 dark:bg-gray-800/95">
+        <!-- 系统配置管理模块 (优雅子Tab分流模式) -->
+        <div v-else-if="activeTab === 'system'" class="space-y-4">
+          <!-- 顶部吸顶条：左侧标题与微副标，右侧全局统配保存 -->
+          <div class="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-200/80 rounded-2xl bg-white/90 p-4 shadow-sm backdrop-blur-md dark:border-gray-700/80 dark:bg-gray-800/90">
             <div>
-              <h3 class="text-lg text-gray-900 font-bold dark:text-gray-100">
-                系统配置
+              <h3 class="text-lg text-gray-900 font-extrabold dark:text-gray-100 flex items-center gap-2">
+                <div class="i-carbon-settings-services text-emerald-500" />
+                <span>系统配置中心</span>
               </h3>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                统一管理连接参数、设备协议和抓包服务。
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                模块化独立配置与管理网关参数、模拟机型、发件邮箱和抓包代理。
               </p>
             </div>
-            <BaseButton size="sm" :loading="anySystemSaving" @click="saveSystemSettings">
-              保存系统配置
-            </BaseButton>
+            <div class="flex items-center gap-2 shrink-0">
+              <BaseButton size="sm" variant="primary" :loading="anySystemSaving" @click="saveSystemSettings">
+                <span class="i-carbon-save mr-1" />
+                保存全部系统配置
+              </BaseButton>
+            </div>
           </div>
 
-          <AdminSystemPanel
-            v-model:local-system-config="localSystemConfig"
-            v-model:local-capture-config="localCaptureConfig"
-            section="system"
-            :show-heading="false"
-            :show-save="false"
-            :default-system-config="defaultSystemConfig"
-            :platform-options="platformOptions"
-            :os-options="osOptions"
-            :system-config-saving="systemConfigSaving"
-            :capture-config-saving="captureConfigSaving"
-            :capture-config-testing="captureConfigTesting"
-            @reset-system="handleResetSystemConfig"
-            @test-capture="handleTestCaptureConfig"
-          />
+          <!-- 系统配置二级胶囊导航 -->
+          <nav class="flex items-center gap-1.5 p-1 rounded-xl bg-gray-100/70 dark:bg-gray-800/60 backdrop-blur-sm overflow-x-auto shadow-inner">
+            <button
+              v-for="sub in systemSubTabs"
+              :key="sub.key"
+              type="button"
+              class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer"
+              :class="systemSubTab === sub.key
+                ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-white/40 dark:hover:bg-gray-700/40'"
+              @click="systemSubTab = sub.key"
+            >
+              <div :class="sub.icon" class="text-sm" />
+              <span>{{ sub.label }}</span>
+            </button>
+          </nav>
 
-          <DeviceProtocolCard
-            v-model:form="deviceProtocolForm"
-            v-model:selected-preset="selectedDevicePreset"
-            :loading="deviceProtocolLoading"
-            :saving="deviceProtocolSaving"
-            :preset-options="deviceProtocolPresetOptions"
-            :show-save="false"
-            @apply-preset="applyDevicePreset"
-            @random-mac="fillRandomDeviceMac"
-            @random-device-id="fillRandomDeviceId"
-            @random-imei="fillRandomImei"
-          />
+          <!-- Tab 1: 运行网关 (WebSocket地址、版本、平台) -->
+          <div v-if="systemSubTab === 'gateway'" class="space-y-4">
+            <AdminSystemPanel
+              v-model:local-system-config="localSystemConfig"
+              v-model:local-capture-config="localCaptureConfig"
+              section="system"
+              :show-heading="false"
+              :show-save="false"
+              :default-system-config="defaultSystemConfig"
+              :platform-options="platformOptions"
+              :os-options="osOptions"
+              :system-config-saving="systemConfigSaving"
+              :capture-config-saving="captureConfigSaving"
+              :capture-config-testing="captureConfigTesting"
+              @reset-system="handleResetSystemConfig"
+              @test-capture="handleTestCaptureConfig"
+            />
+          </div>
 
-          <!-- 全局发信邮箱 (SMTP) 管理配置 -->
-          <AdminSmtpConfigCard
-            v-model:config="localOffline"
-            :saving="offlineSaving"
-            :testing="offlineTesting"
-            @save="handleSaveOffline"
-            @test="handleTestOffline"
-          />
 
-          <AdminSystemPanel
-            v-model:local-system-config="localSystemConfig"
-            v-model:local-capture-config="localCaptureConfig"
-            section="capture"
-            :show-heading="false"
-            :show-save="false"
-            :default-system-config="defaultSystemConfig"
-            :platform-options="platformOptions"
-            :os-options="osOptions"
-            :system-config-saving="systemConfigSaving"
-            :capture-config-saving="captureConfigSaving"
-            :capture-config-testing="captureConfigTesting"
-            @test-capture="handleTestCaptureConfig"
-          />
+
+          <!-- Tab 3: 全局发信邮箱 (SMTP 邮件推送中枢) -->
+          <div v-else-if="systemSubTab === 'smtp'" class="space-y-4">
+            <AdminSmtpConfigCard
+              v-model:config="localOffline"
+              :saving="offlineSaving"
+              :testing="offlineTesting"
+              @save="handleSaveOffline"
+              @test="handleTestOffline"
+            />
+          </div>
+
+          <!-- Tab 4: 抓包服务 (18000 MITM代理服务管理) -->
+          <div v-else-if="systemSubTab === 'capture'" class="space-y-4">
+            <AdminSystemPanel
+              v-model:local-system-config="localSystemConfig"
+              v-model:local-capture-config="localCaptureConfig"
+              section="capture"
+              :show-heading="false"
+              :show-save="false"
+              :default-system-config="defaultSystemConfig"
+              :platform-options="platformOptions"
+              :os-options="osOptions"
+              :system-config-saving="systemConfigSaving"
+              :capture-config-saving="captureConfigSaving"
+              :capture-config-testing="captureConfigTesting"
+              @test-capture="handleTestCaptureConfig"
+            />
+          </div>
         </div>
       </div>
     </div>

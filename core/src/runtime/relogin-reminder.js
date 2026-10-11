@@ -241,12 +241,16 @@ function createReloginReminderService(deps) {
     const channel = String(cfg.channel || '').trim().toLowerCase();
     const endpoint = String(cfg.endpoint || '').trim();
     const token = String(cfg.token || '').trim();
-    const baseTitle = String(cfg.title || '账号下线提醒').trim();
-    const title = accountName ? `${baseTitle  } ${  accountName}` : baseTitle;
-    let content = String(cfg.msg || '账号下线').trim();
+    const title = `[QQ农场] 您的账号【${accountName || accountId}】已离线`;
+    let content = `尊敬的农场主：\n您的农场账号【${accountName || accountId}】已离线。`;
+    if (reason) content += `\n离线原因: ${reason}`;
+    const minutes = Math.floor((Number(offlineMs) || 0) / 60000);
+    if (minutes > 0) content += `\n离线时长: ${minutes} 分钟`;
+    content += `\n发送时间: ${new Date().toLocaleString('zh-CN', { hour12: false })}`;
+    content += `\n提示: 请尽快登录控制面板重新扫码或运行账号。`;
 
-    if (!channel || !title || !content) {
-      log('错误', `下线提醒配置不完整: channel=${  channel  }, title=${  title  }, content=${  content}`);
+    if (!channel || !token) {
+      log('错误', `下线提醒配置不完整: channel=${channel}, token=未设置`);
       return;
     }
     if (channel !== 'webhook' && !token) {
@@ -258,9 +262,7 @@ function createReloginReminderService(deps) {
       return;
     }
 
-    const minutes = Math.floor((Number(offlineMs) || 0) / 60000);
-    if (reason) content += `\n原因: ${  reason}`;
-    if (minutes > 0) content += `\n离线时长: ${  minutes  } 分钟`;
+
     content = await appendReloginContent(content, cfg.reloginUrlMode, accountId, accountName);
 
     const ret = await sendPushooMessage({ channel, endpoint, token, title, content });

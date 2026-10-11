@@ -799,7 +799,7 @@ function openCareer() {
         <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
           <div class="flex items-center gap-1.5 text-xs text-gray-500">
             <img src="/game-config/resource-icons/fertilizer-normal.png" alt="普通化肥" class="h-4 w-4 shrink-0 object-contain">
-            <span>普通肥</span>
+            <span>普通化肥</span>
           </div>
           <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ formatBucketTime(fertilizerNormal) }}</span>
         </div>
@@ -815,7 +815,7 @@ function openCareer() {
         <div class="flex items-center justify-between rounded-lg px-2.5 py-1.5 bg-gray-50/50 dark:bg-gray-800/30">
           <div class="flex items-center gap-1.5 text-xs text-gray-500">
             <img src="/game-config/resource-icons/fertilizer-organic.png" alt="有机化肥" class="h-4 w-4 shrink-0 object-contain">
-            <span>有机肥</span>
+            <span>有机化肥</span>
           </div>
           <span class="text-xs font-bold text-gray-700 dark:text-gray-200">{{ formatBucketTime(fertilizerOrganic) }}</span>
         </div>
