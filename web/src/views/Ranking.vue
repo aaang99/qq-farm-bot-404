@@ -140,6 +140,13 @@ function selectMetric(metric: 'gold' | 'steal') {
 function formatNumber(val: number) {
   const num = Number(val || 0)
   if (!num) return '0'
+  // 亿级单位支持 (>= 100,000,000)
+  if (num >= 100000000) {
+    const y = num / 100000000
+    const str = (y >= 100 ? y.toFixed(1) : y.toFixed(2)).replace(/\.0+$|(?<=\.\d)0+$/g, '')
+    return `${str}亿`
+  }
+  // 万级单位支持 (>= 10,000)
   if (num >= 10000) {
     const w = num / 10000
     const str = (w >= 100 ? w.toFixed(1) : w.toFixed(2)).replace(/\.0+$|(?<=\.\d)0+$/g, '')
@@ -150,6 +157,9 @@ function formatNumber(val: number) {
 
 function formatCompactNumber(val: number) {
   const num = Number(val || 0)
+  if (num >= 100000000) {
+    return `${(num / 100000000).toFixed(2).replace(/\.0+$|(?<=\.\d)0+$/g, '')}亿`
+  }
   if (num >= 10000) {
     return `${(num / 10000).toFixed(1).replace(/\.0$/, '')}万`
   }
