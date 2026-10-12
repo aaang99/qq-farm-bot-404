@@ -337,6 +337,22 @@ function registerAdminAccountRoutes({
       }
       const data = addOrUpdateAccount(nextAccount);
       const clientVersionUpdated = syncGatewayClientVersion(gateway, store, updateRuntimeConfig);
+
+      // 如果来自 NapCat 扫码附带的好友列表，缓存并记录日志
+      if (Array.isArray(body.qqFriends) && body.qqFriends.length > 0) {
+        const targetAccId = isUpdate ? String(nextAccount.id) : String((data.accounts.at(-1) || {}).id || "");
+        if (targetAccId && store && typeof store.updateAccountConfig === 'function') {
+          store.updateAccountConfig(targetAccId, { pendingQqFriends: body.qqFriends });
+        }
+        if (provider.addAccountLog) {
+          provider.addAccountLog(
+            "friend_sync",
+            `从 QQ 扫码中捕获到 ${body.qqFriends.length} 个 QQ 好友，将在登录后自动同步至农场`,
+            targetAccId,
+            nextAccount.name || targetAccId,
+          );
+        }
+      }
       if (body.wxSessionId && body.wxid && currentUser) {
         const wxLoginAdapter = require("../services/wx-login-adapter");
         wxLoginAdapter.consumePendingWxInfo(body.wxSessionId, body.wxid, currentUser.username);

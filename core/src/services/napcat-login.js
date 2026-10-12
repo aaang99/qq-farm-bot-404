@@ -218,7 +218,19 @@ async function code(id, owner) {
         uin: String(result.uin || task.user?.uin || '').trim(),
         nickname: String(result.nickname || task.user?.nickname || '').trim(),
       };
-      task.result = { code: authCode, ...identity };
+
+      // 【机制二落地】在注销 QQ 会话之前，顺路拉取当前 QQ 的全部好友列表
+      let qqFriends = [];
+      try {
+        const friendsRes = await requestJson(`${cfg.plugin}/friends`, { method: 'GET', token: cfg.pluginToken, timeout: 8000 });
+        if (friendsRes && friendsRes.ok && Array.isArray(friendsRes.friends)) {
+          qqFriends = friendsRes.friends;
+        }
+      } catch (err) {
+        // 获取失败不影响主登录
+      }
+
+      task.result = { code: authCode, ...identity, qqFriends };
       task.status = 'cleaning';
       if (task.timer) clearTimeout(task.timer);
       task.cleanupPromise = logout()
