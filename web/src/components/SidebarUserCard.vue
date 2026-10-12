@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useSidebarUser } from './useSidebarUser'
+import ChangePasswordModal from './ChangePasswordModal.vue'
 
 const { userStore, handleLogout } = useSidebarUser()
+const showPasswordModal = ref(false)
 </script>
 
 <template>
@@ -11,7 +14,7 @@ const { userStore, handleLogout } = useSidebarUser()
   >
     <div class="flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 min-w-0">
-        <!-- 机器人矢量图标替代大图，极速无白屏渲染 -->
+        <!-- 机器人矢量图标 -->
         <div class="relative h-9 w-9 flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/15 to-indigo-500/20 text-blue-600 dark:text-blue-400 ring-1 ring-white/80 shadow-sm">
           <div class="i-carbon-bot text-xl" />
         </div>
@@ -34,14 +37,35 @@ const { userStore, handleLogout } = useSidebarUser()
           </div>
         </div>
       </div>
-      <button
-        class="h-7 w-7 flex shrink-0 items-center justify-center rounded-xl hover:bg-red-500/20 hover:text-red-500 transition-all opacity-70 hover:opacity-100"
-        title="退出登录"
-        @click="handleLogout"
-      >
-        <div class="i-carbon-logout text-sm" />
-      </button>
+
+      <div class="flex items-center gap-1">
+        <!-- 修改密码按钮 -->
+        <button
+          class="h-7 w-7 flex shrink-0 items-center justify-center rounded-xl hover:bg-blue-500/20 hover:text-blue-500 transition-all opacity-70 hover:opacity-100"
+          title="修改登录密码"
+          @click="showPasswordModal = true"
+        >
+          <div class="i-carbon-password text-sm" />
+        </button>
+
+        <!-- 退出登录按钮 -->
+        <button
+          class="h-7 w-7 flex shrink-0 items-center justify-center rounded-xl hover:bg-red-500/20 hover:text-red-500 transition-all opacity-70 hover:opacity-100"
+          title="退出登录"
+          @click="handleLogout"
+        >
+          <div class="i-carbon-logout text-sm" />
+        </button>
+      </div>
     </div>
+
+    <!-- 修改密码弹窗 -->
+    <Teleport to="body">
+      <ChangePasswordModal
+        v-if="showPasswordModal"
+        @close="showPasswordModal = false"
+      />
+    </Teleport>
   </div>
 </template>
 
