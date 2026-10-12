@@ -196,7 +196,18 @@ function registerAdminRankingRoutes({ app, store, provider }) {
 
       const rankings = [];
 
-      for (const acc of accountList) {
+      // 确保农场账号唯一性：如果数据库存在历史遗留重复记录，按 uin/openId 排他去重
+      const seenEntities = new Set();
+      const uniqueAccountList = [];
+      for (const acc of [...accountList].reverse()) {
+        const entityKey = acc.uin ? `qq_${acc.uin}` : (acc.openId ? `wx_${acc.openId}` : (acc.wxid ? `wx_${acc.wxid}` : `id_${acc.id}`));
+        if (!seenEntities.has(entityKey)) {
+          seenEntities.add(entityKey);
+          uniqueAccountList.unshift(acc);
+        }
+      }
+
+      for (const acc of uniqueAccountList) {
         const accountId = String(acc.id);
 
         let liveStatus = null;

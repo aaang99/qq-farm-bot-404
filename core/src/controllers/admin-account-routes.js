@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 function createLogQuery(query) {
   return {
     limit: Number.parseInt(query.limit) || 100,
@@ -124,7 +125,18 @@ function registerAdminAccountRoutes({
       }
 
       const allAccounts = getAccountsForUser();
-      const list = allAccounts.map(acc => {
+      // 挂机列表去重保护：按真实游戏账号本体去重，仅保留最新归属者记录
+      const seenBotEntities = new Set();
+      const uniqueBotAccounts = [];
+      for (const acc of [...allAccounts].reverse()) {
+        const entityKey = acc.uin ? `qq_${acc.uin}` : (acc.openId ? `wx_${acc.openId}` : (acc.wxid ? `wx_${acc.wxid}` : `id_${acc.id}`));
+        if (!seenBotEntities.has(entityKey)) {
+          seenBotEntities.add(entityKey);
+          uniqueBotAccounts.unshift(acc);
+        }
+      }
+
+      const list = uniqueBotAccounts.map(acc => {
         let isRunning = false;
         let liveLevel = null;
         let liveNick = null;
@@ -404,6 +416,69 @@ function registerAdminAccountRoutes({
       } else if (currentUser) {
         nextAccount.username = currentUser.username;
       }
+
+      // ============ 跨账号冲突检测与自动排他清理 ============
+      // 如果新添加的农场账号已存在于某个老用户下，按新数据从0开始：停止并彻底删除老账号及其旧数据
+      if (!isUpdate && (nextAccount.uin || nextAccount.wxid || nextAccount.openId)) {
+        try {
+          const currentOwner = currentUser ? currentUser.username : (nextAccount.username || 'admin');
+          const allExistingAccounts = getAccountsForUser();
+          const conflictingAccounts = allExistingAccounts.filter(existing => {
+            if (String(existing.username || '') === String(currentOwner)) return false; // 同一用户更新不视为跨用户冲突
+            
+            // QQ 账号按 uin 比对
+            if (nextAccount.uin && existing.uin && String(existing.uin) === String(nextAccount.uin)) {
+              return true;
+            }
+            // 微信账号按 wxid 或 openId 比对
+            if (nextAccount.wxid && existing.wxid && String(existing.wxid) === String(nextAccount.wxid)) {
+              return true;
+            }
+            if (nextAccount.openId && existing.openId && String(existing.openId) === String(nextAccount.openId)) {
+              return true;
+            }
+            return false;
+          });
+
+          for (const conflict of conflictingAccounts) {
+            const conflictId = String(conflict.id);
+            // 1. 立即停止老挂机 Worker，杜绝互踢和抢登
+            if (provider && typeof provider.isAccountRunning === 'function' && provider.isAccountRunning(conflictId)) {
+              if (typeof provider.stopAccount === 'function') {
+                provider.stopAccount(conflictId);
+              }
+            }
+
+            // 2. 彻底删除老用户的农场账号配置与旧缓存
+            if (typeof deleteAccount === 'function') {
+              deleteAccount(conflictId);
+            }
+
+            // 3. 彻底清除旧账号的历史战绩与收益文件（确保新账号从 0 开始，排行榜不继承旧收益）
+            try {
+              const baseDir = process.env.FARM_DATA_DIR || path.join(__dirname, '../../../data');
+              const oldStatsFile = path.join(baseDir, 'stats', `${conflictId}.json`);
+              const oldHistoryFile = path.join(baseDir, 'stats', `history_${conflictId}.json`);
+              const oldCareerFile = path.join(baseDir, 'stats', `career_${conflictId}.json`);
+              if (fs.existsSync(oldStatsFile)) fs.unlinkSync(oldStatsFile);
+              if (fs.existsSync(oldHistoryFile)) fs.unlinkSync(oldHistoryFile);
+              if (fs.existsSync(oldCareerFile)) fs.unlinkSync(oldCareerFile);
+            } catch (fileErr) {}
+
+            if (provider.addAccountLog) {
+              provider.addAccountLog(
+                'account_conflict_replaced',
+                `农场账号【${conflict.name || conflictId}】已从老用户【${conflict.username}】迁移至新用户【${currentOwner}】，已自动清理老用户旧数据与历史战绩`,
+                conflictId,
+                conflict.name || conflictId
+              );
+            }
+          }
+        } catch (conflictErr) {
+          console.warn('[AccountConflict] 冲突检查异常:', conflictErr.message);
+        }
+      }
+
       const data = addOrUpdateAccount(nextAccount);
       const clientVersionUpdated = syncGatewayClientVersion(gateway, store, updateRuntimeConfig);
 

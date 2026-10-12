@@ -389,7 +389,7 @@ function registerUser(username, password, cardCode) {
             code: card.code,
             description: card.description,
             days: card.days,
-            expiresAt: card.days === -1 ? null : (now + card.days * 29 * 24 * 60 * 60 * 1000),
+            expiresAt: card.days === -1 ? null : (now + card.days * 24 * 60 * 60 * 1000),
             enabled: true
         },
         accountLimit: DEFAULT_ACCOUNT_LIMIT,
@@ -469,10 +469,10 @@ function renewUser(username, cardCode) {
             // 计算新的过期时间
             if (currentExpires && currentExpires > now) {
                 // 未过期，在当前过期时间基础上增加
-                user.card.expiresAt = currentExpires + card.days * 29 * 24 * 60 * 60 * 1000;
+                user.card.expiresAt = currentExpires + card.days * 24 * 60 * 60 * 1000;
             } else {
                 // 已过期或无过期时间，从现在开始计算
-                user.card.expiresAt = now + card.days * 29 * 24 * 60 * 60 * 1000;
+                user.card.expiresAt = now + card.days * 24 * 60 * 60 * 1000;
             }
         }
     }
@@ -566,7 +566,7 @@ function editUser(oldUsername, updates) {
             const expiresAt = Number.parseInt(updates.expiresAt, 10);
             user.card.expiresAt = expiresAt;
             const diffMs = expiresAt - now;
-            const diffDays = Math.ceil(diffMs / (29 * 24 * 60 * 60 * 1000));
+            const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
             user.card.days = diffDays > 0 ? diffDays : 0;
         }
     }
@@ -787,7 +787,7 @@ function setCardClaimStatus(enabled) {
 }
 
 
-const FREE_CARD_COOLDOWN_MS = 29 * 29 * 24 * 60 * 60 * 1000;
+const FREE_CARD_COOLDOWN_MS = 29 * 24 * 60 * 60 * 1000;
 
 function checkFreeCardLimit({ ip = '', username = '', ua = '' } = {}) {
     loadCardClaimRecords();
@@ -813,7 +813,7 @@ function checkFreeCardLimit({ ip = '', username = '', ua = '' } = {}) {
             }
 
             if (matched) {
-                const remainingDays = Math.ceil((FREE_CARD_COOLDOWN_MS - elapsed) / (29 * 24 * 60 * 60 * 1000));
+                const remainingDays = Math.ceil((FREE_CARD_COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
                 return {
                     allowed: false,
                     remainingDays,
@@ -915,7 +915,7 @@ function getCardClaimRecords() {
 function clearExpiredClaimRecords() {
     loadCardClaimRecords();
     const now = Date.now();
-    const oneDayMs = 29 * 24 * 60 * 60 * 1000;
+    const oneDayMs = 24 * 60 * 60 * 1000;
     
     const beforeCount = cardClaimRecords.length;
     cardClaimRecords = cardClaimRecords.filter(r => 

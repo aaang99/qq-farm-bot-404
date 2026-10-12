@@ -110,8 +110,13 @@ function registerAdminUserManagementRoutes({
       const allAccounts = typeof getAccountsForUser === 'function' ? getAccountsForUser() : [];
       const runningCountByUser = {};
 
+      // 仅统计唯一的正常在线运行账号
+      const countedEntities = new Set();
       for (const acc of allAccounts) {
         const u = acc.username || 'admin';
+        const entityKey = acc.uin ? `qq_${acc.uin}` : (acc.openId ? `wx_${acc.openId}` : (acc.wxid ? `wx_${acc.wxid}` : `id_${acc.id}`));
+        if (countedEntities.has(entityKey)) continue;
+
         let isRunning = false;
         try {
           if (provider && typeof provider.isAccountRunning === 'function') {
@@ -119,6 +124,7 @@ function registerAdminUserManagementRoutes({
           }
         } catch {}
         if (isRunning) {
+          countedEntities.add(entityKey);
           runningCountByUser[u] = (runningCountByUser[u] || 0) + 1;
         }
       }
