@@ -358,6 +358,21 @@ function registerUser(username, password, cardCode) {
         return { ok: false, error: '卡密已被使用' };
     }
 
+    if (card.isFree === true) {
+        const freeCheck = checkFreeCardLimit({ username });
+        if (!freeCheck.allowed) {
+            return { ok: false, error: freeCheck.message };
+        }
+    }
+
+    // 免费卡密严格风控：29 天内每账号/设备仅限一次（防爆破与多卡续费）
+    if (card.isFree === true) {
+        const freeCheck = checkFreeCardLimit({ username });
+        if (!freeCheck.allowed) {
+            return { ok: false, error: freeCheck.message };
+        }
+    }
+
     const cardType = card.type || 'time';
     if (cardType === 'quota') {
         return { ok: false, error: '注册只能使用时间卡密，额度卡密请登录后在续费中使用' };
@@ -374,7 +389,7 @@ function registerUser(username, password, cardCode) {
             code: card.code,
             description: card.description,
             days: card.days,
-            expiresAt: card.days === -1 ? null : (now + card.days * 24 * 60 * 60 * 1000),
+            expiresAt: card.days === -1 ? null : (now + card.days * 29 * 24 * 60 * 60 * 1000),
             enabled: true
         },
         accountLimit: DEFAULT_ACCOUNT_LIMIT,
@@ -454,10 +469,10 @@ function renewUser(username, cardCode) {
             // 计算新的过期时间
             if (currentExpires && currentExpires > now) {
                 // 未过期，在当前过期时间基础上增加
-                user.card.expiresAt = currentExpires + card.days * 24 * 60 * 60 * 1000;
+                user.card.expiresAt = currentExpires + card.days * 29 * 24 * 60 * 60 * 1000;
             } else {
                 // 已过期或无过期时间，从现在开始计算
-                user.card.expiresAt = now + card.days * 24 * 60 * 60 * 1000;
+                user.card.expiresAt = now + card.days * 29 * 24 * 60 * 60 * 1000;
             }
         }
     }
@@ -465,6 +480,9 @@ function renewUser(username, cardCode) {
     // 标记卡密已使用
     card.usedBy = username;
     card.usedAt = now;
+    if (card.isFree === true) {
+        recordFreeCardUsage({ username, cardCode: card.code, action: 'use' });
+    }
 
     saveUsers();
     saveCards();
@@ -478,6 +496,7 @@ function getAllUsers() {
         username: u.username,
         role: u.role,
         card: u.card,
+        createdAt: u.createdAt || null,
         accountLimit: u.accountLimit || DEFAULT_ACCOUNT_LIMIT
     }));
 }
@@ -547,7 +566,7 @@ function editUser(oldUsername, updates) {
             const expiresAt = Number.parseInt(updates.expiresAt, 10);
             user.card.expiresAt = expiresAt;
             const diffMs = expiresAt - now;
-            const diffDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+            const diffDays = Math.ceil(diffMs / (29 * 24 * 60 * 60 * 1000));
             user.card.days = diffDays > 0 ? diffDays : 0;
         }
     }
@@ -570,7 +589,7 @@ function getAllCards() {
     return cards;
 }
 
-function createCard(description, days, type = 'time') {
+function createCard(description, days, type = 'time', isFree = false) {
     loadCards();
 
     const newCard = {
@@ -578,6 +597,7 @@ function createCard(description, days, type = 'time') {
         description,
         days: Number.parseInt(days, 10) || 30,
         type: type === 'quota' ? 'quota' : 'time',
+        isFree: Boolean(isFree),
         enabled: true,
         usedBy: null,
         usedAt: null,
@@ -590,13 +610,14 @@ function createCard(description, days, type = 'time') {
     return newCard;
 }
 
-function createCardsBatch(description, days, count, type = 'time') {
+function createCardsBatch(description, days, count, type = 'time', isFree = false) {
     loadCards();
 
     const createdCards = [];
     const daysNum = Number.parseInt(days, 10) || 30;
     const countNum = Math.min(Math.max(Number.parseInt(count, 10) || 1, 1), 100);
     const cardType = type === 'quota' ? 'quota' : 'time';
+    const freeFlag = Boolean(isFree);
 
     for (let i = 0; i < countNum; i++) {
         const newCard = {
@@ -604,6 +625,7 @@ function createCardsBatch(description, days, count, type = 'time') {
             description,
             days: daysNum,
             type: cardType,
+            isFree: freeFlag,
             enabled: true,
             usedBy: null,
             usedAt: null,
@@ -764,6 +786,60 @@ function setCardClaimStatus(enabled) {
     return { enabled: cardClaimEnabled };
 }
 
+
+const FREE_CARD_COOLDOWN_MS = 29 * 29 * 24 * 60 * 60 * 1000;
+
+function checkFreeCardLimit({ ip = '', username = '', ua = '' } = {}) {
+    loadCardClaimRecords();
+    const now = Date.now();
+    const uaHash = ua ? crypto.createHash('sha256').update(ua).digest('hex') : '';
+    const normIp = String(ip || '').replace(/^.*:/, '').trim();
+    const normUser = String(username || '').trim().toLowerCase();
+
+    for (const r of cardClaimRecords) {
+        const elapsed = now - Number(r.claimTime || r.usedTime || 0);
+        if (elapsed < FREE_CARD_COOLDOWN_MS) {
+            let matched = false;
+            let reason = '';
+            if (normUser && r.username && r.username.toLowerCase() === normUser) {
+                matched = true;
+                reason = '当前账号';
+            } else if (normIp && r.ip && r.ip === normIp) {
+                matched = true;
+                reason = '您的网络IP';
+            } else if (uaHash && r.uaHash && r.uaHash === uaHash) {
+                matched = true;
+                reason = '当前设备';
+            }
+
+            if (matched) {
+                const remainingDays = Math.ceil((FREE_CARD_COOLDOWN_MS - elapsed) / (29 * 24 * 60 * 60 * 1000));
+                return {
+                    allowed: false,
+                    remainingDays,
+                    message: `免费卡密 29 天内仅限使用或领取一次！${reason}已参与过，距下次可用还剩 ${remainingDays} 天。`
+                };
+            }
+        }
+    }
+    return { allowed: true };
+}
+
+function recordFreeCardUsage({ ip = '', username = '', ua = '', cardCode = '', action = 'use' } = {}) {
+    loadCardClaimRecords();
+    const uaHash = ua ? crypto.createHash('sha256').update(ua).digest('hex') : '';
+    const normIp = String(ip || '').replace(/^.*:/, '').trim();
+    cardClaimRecords.push({
+        ip: normIp,
+        uaHash,
+        username: username || null,
+        cardCode,
+        action,
+        claimTime: Date.now()
+    });
+    saveCardClaimRecords();
+}
+
 function checkUAClaimLimit(ua) {
     loadCardClaimRecords();
     const now = Date.now();
@@ -772,12 +848,12 @@ function checkUAClaimLimit(ua) {
     const record = cardClaimRecords.find(r => r.uaHash === uaHash);
     if (record) {
         const elapsed = now - record.claimTime;
-        if (elapsed < 24 * 60 * 60 * 1000) {
-            const remainingMs = 24 * 60 * 60 * 1000 - elapsed;
+        if (elapsed < 29 * 24 * 60 * 60 * 1000) {
+            const remainingMs = 29 * 24 * 60 * 60 * 1000 - elapsed;
             return {
                 allowed: false,
                 remainingMs,
-                message: '您已经在24小时内领取过一次卡密了！'
+                message: '免费卡密 29 天内仅限领取一次！'
             };
         }
     }
@@ -798,18 +874,20 @@ function claimCardByUA(ua, username = null) {
         return { ok: false, error: uaCheck.message, remainingMs: uaCheck.remainingMs };
     }
     
-    const unusedTimeCards = cards.filter(c => 
+    // 严格限制：只有管理员生成并标记为 isFree === true 的卡密才允许被免费领取
+    const unusedFreeCards = cards.filter(c => 
+        c.isFree === true &&
         c.type === 'time' && 
         !c.usedBy && 
         c.enabled
     );
     
-    if (unusedTimeCards.length === 0) {
-        return { ok: false, error: '卡密库存不足，请联系管理员！' };
+    if (unusedFreeCards.length === 0) {
+        return { ok: false, error: '当前暂无免费体验卡密，请联系管理员获取正式卡密！' };
     }
     
-    const randomIndex = Math.floor(Math.random() * unusedTimeCards.length);
-    const selectedCard = unusedTimeCards[randomIndex];
+    const randomIndex = Math.floor(Math.random() * unusedFreeCards.length);
+    const selectedCard = unusedFreeCards[randomIndex];
     
     const uaHash = crypto.createHash('sha256').update(ua).digest('hex');
     cardClaimRecords.push({
@@ -837,7 +915,7 @@ function getCardClaimRecords() {
 function clearExpiredClaimRecords() {
     loadCardClaimRecords();
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
+    const oneDayMs = 29 * 24 * 60 * 60 * 1000;
     
     const beforeCount = cardClaimRecords.length;
     cardClaimRecords = cardClaimRecords.filter(r => 

@@ -32,9 +32,72 @@ watch(activeTab, (newTab) => {
   localStorage.setItem('admin-active-tab', newTab)
 })
 
+// ========== 挂机列表 ==========
+interface BotAccountItem {
+  id: string | number
+  name: string
+  accountName?: string
+  platform: 'qq' | 'wx'
+  level: number
+  avatar?: string
+  username: string
+  running: boolean
+  createdAt?: number | string | null
+  uin?: string
+}
+
+const botAccounts = ref<BotAccountItem[]>([])
+const botAccountsLoading = ref(false)
+const botAccountSearch = ref('')
+const botAccountPlatformFilter = ref<'all' | 'qq' | 'wx'>('all')
+const botAccountStatusFilter = ref<'all' | 'running' | 'stopped'>('all')
+
+async function fetchAllBotAccounts() {
+  botAccountsLoading.value = true
+  try {
+    const res = await api.get('/api/admin/all-accounts')
+    if (res.data && res.data.ok) {
+      botAccounts.value = res.data.data || []
+    } else {
+      toast.error(res.data?.error || '获取挂机账号失败')
+    }
+  } catch (e: any) {
+    toast.error(e.message || '获取挂机账号失败')
+  } finally {
+    botAccountsLoading.value = false
+  }
+}
+
+const qqBotAccountsCount = computed(() => botAccounts.value.filter(a => a.platform === 'qq').length)
+const wxBotAccountsCount = computed(() => botAccounts.value.filter(a => a.platform === 'wx').length)
+
+const filteredBotAccounts = computed(() => {
+  const list = Array.isArray(botAccounts.value) ? botAccounts.value : []
+  return list.filter(acc => {
+    if (botAccountPlatformFilter.value !== 'all' && acc.platform !== botAccountPlatformFilter.value) {
+      return false
+    }
+    if (botAccountStatusFilter.value === 'running' && !acc.running) {
+      return false
+    }
+    if (botAccountStatusFilter.value === 'stopped' && acc.running) {
+      return false
+    }
+    if (botAccountSearch.value) {
+      const q = botAccountSearch.value.toLowerCase()
+      return (acc.name && acc.name.toLowerCase().includes(q))
+        || (acc.username && acc.username.toLowerCase().includes(q))
+        || (acc.accountName && acc.accountName.toLowerCase().includes(q))
+        || (acc.uin && String(acc.uin).includes(q))
+    }
+    return true
+  })
+})
+
 const tabs = computed(() => [
   { key: 'card', label: '卡密', icon: 'i-carbon-ticket' },
   { key: 'user', label: '用户', icon: 'i-carbon-user-admin' },
+  { key: 'botAccounts', label: '挂机列表', icon: 'i-carbon-bot' },
   { key: 'system', label: '系统配置', icon: 'i-carbon-settings-services' },
 ] as const)
 
@@ -67,18 +130,23 @@ const newCard = ref({
   days: 30,
   count: 1,
   type: 'time' as 'time' | 'quota',
+  isFree: false,
 })
 
 const selectedCards = ref<Set<string>>(new Set())
 const selectAll = ref(false)
 
 const searchQuery = ref('')
-const filterStatus = ref<'all' | 'used' | 'unused' | 'enabled' | 'disabled'>('all')
+const filterStatus = ref<'all' | 'free' | 'used' | 'unused' | 'enabled' | 'disabled'>('all')
 const cardTypeFilter = ref<'all' | 'time' | 'quota'>('all')
 
 // 卡密领取功能
 const cardClaimEnabled = ref(false)
 const cardClaimLoading = ref(false)
+
+const unusedFreeCardsCount = computed(() => {
+  return cards.value.filter(c => c.isFree === true && c.type === 'time' && !c.usedBy && c.enabled).length
+})
 
 const unusedTimeCardsCount = computed(() => {
   return cards.value.filter(c => c.type === 'time' && !c.usedBy && c.enabled).length
@@ -97,6 +165,9 @@ const filteredCards = computed(() => {
   }
 
   switch (filterStatus.value) {
+    case 'free':
+      result = result.filter(card => card.isFree === true)
+      break
     case 'used':
       result = result.filter(card => card.usedBy)
       break
@@ -187,6 +258,7 @@ async function createCard() {
       newCard.value.days,
       count > 1 ? count : undefined,
       newCard.value.type,
+      newCard.value.isFree,
     )
     if (result && result.ok) {
       if (result.batch) {
@@ -199,7 +271,7 @@ async function createCard() {
         toast.success('卡密创建成功')
       }
       showCreateModal.value = false
-      newCard.value = { description: '', days: 30, count: 1, type: 'time' }
+      newCard.value = { description: '', days: 30, count: 1, type: 'time', isFree: false }
       // 延迟 300ms 刷新列表，确保后端文件写入完毕并防网络竞态
       setTimeout(() => {
         fetchCards()
@@ -212,6 +284,63 @@ async function createCard() {
   catch (e: any) {
     // 捕获可能已成功写入但前端网络抖动的情况，自动静默刷新一次卡密列表
     setTimeout(() => { fetchCards() }, 500)
+  }
+}
+
+
+async function handleBatchDeleteCards(targetType: 'selected' | 'used' | 'disabled' | 'free_used') {
+  let codesToDelete: string[] = []
+  let confirmTip = ''
+
+  if (targetType === 'selected') {
+    codesToDelete = Array.from(selectedCards.value)
+    if (codesToDelete.length === 0) {
+      toast.warning('请先勾选要删除的卡密')
+      return
+    }
+    confirmTip = `确定要批量删除已选中的 ${codesToDelete.length} 个卡密吗？`
+  }
+  else if (targetType === 'used') {
+    codesToDelete = cards.value.filter(c => !!c.usedBy).map(c => c.code)
+    if (codesToDelete.length === 0) {
+      toast.info('当前没有已使用的卡密')
+      return
+    }
+    confirmTip = `确定要一键清理所有【已使用】的 ${codesToDelete.length} 个卡密吗？`
+  }
+  else if (targetType === 'disabled') {
+    codesToDelete = cards.value.filter(c => !c.enabled).map(c => c.code)
+    if (codesToDelete.length === 0) {
+      toast.info('当前没有已禁用的卡密')
+      return
+    }
+    confirmTip = `确定要一键清理所有【已禁用】的 ${codesToDelete.length} 个卡密吗？`
+  }
+  else if (targetType === 'free_used') {
+    codesToDelete = cards.value.filter(c => c.isFree && !!c.usedBy).map(c => c.code)
+    if (codesToDelete.length === 0) {
+      toast.info('当前没有已使用的免费卡密')
+      return
+    }
+    confirmTip = `确定要一键清理所有【已使用免费卡密】(${codesToDelete.length} 个) 吗？`
+  }
+
+  if (!window.confirm(confirmTip)) return
+
+  try {
+    const res = await userStore.deleteCardsBatch(codesToDelete)
+    if (res && res.ok) {
+      toast.success(`成功删除 ${res.deletedCount || codesToDelete.length} 个卡密`)
+      selectedCards.value.clear()
+      selectAll.value = false
+      await fetchCards()
+    }
+    else {
+      toast.error(res?.error || '批量删除失败')
+    }
+  }
+  catch (e: any) {
+    toast.error(e.message || '批量删除失败')
   }
 }
 
@@ -752,6 +881,7 @@ async function saveSystemSettings() {
 watch(activeTab, (newTab) => {
   if (newTab === 'card') fetchCards()
   else if (newTab === 'user') fetchUsers()
+  else if (newTab === 'botAccounts') fetchAllBotAccounts()
 })
 
 onMounted(async () => {
@@ -883,104 +1013,131 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- 卡密领取功能开关 -->
-          <div class="flex items-center justify-between border border-gray-200 rounded-lg bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-            <div>
-              <h4 class="text-sm text-gray-900 font-medium dark:text-white">
-                卡密领取功能
-              </h4>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                开启后，用户注册时可免费领取一张时间卡密
-              </p>
+          <!-- 卡密领取功能开关（精致液态玻璃微透卡片，手机端超紧凑横排） -->
+          <div class="rounded-2xl border border-white/60 bg-white/55 p-3.5 shadow-sm backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/50">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <span class="i-carbon-gift text-lg text-emerald-600 dark:text-emerald-400" />
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-white">
+                      卡密领取功能
+                    </h4>
+                    <span
+                      class="inline-flex items-center rounded-full px-2 py-0.2 text-[11px] font-semibold"
+                      :class="unusedFreeCardsCount > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'"
+                    >
+                      免费库存: {{ unusedFreeCardsCount }} 张
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-none">
+                <BaseSwitch
+                  v-model="cardClaimEnabled"
+                  :disabled="cardClaimLoading"
+                  @update:model-value="toggleCardClaimStatus"
+                />
+              </div>
             </div>
-            <div class="flex items-center gap-3">
-              <span class="text-xs text-gray-500">
-                库存: <span class="font-medium" :class="unusedTimeCardsCount > 0 ? 'text-green-600' : 'text-red-600'">{{ unusedTimeCardsCount }}</span> 张
-              </span>
-              <BaseSwitch
-                v-model="cardClaimEnabled"
-                :disabled="cardClaimLoading"
-                @update:model-value="toggleCardClaimStatus"
-              />
+            <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 pl-6.5 leading-relaxed">
+              开启后，用户在注册页面可免费领取一张体验卡密（受 29 天频次严格控制）。
+            </p>
+          </div>
+
+          <!-- 批量与分类一键清理工具条 -->
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/60 bg-white/45 p-2 backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/40">
+            <div class="flex items-center gap-2 flex-wrap">
+              <label class="flex cursor-pointer items-center gap-1.5 px-2 py-1 text-xs font-semibold text-gray-700 select-none dark:text-gray-200">
+                <input
+                  v-model="selectAll"
+                  type="checkbox"
+                  class="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  @change="toggleSelectAll"
+                >
+                全选本页 ({{ selectedCards.size }}/{{ filteredCards.length }})
+              </label>
+
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-bold shadow-sm transition flex items-center gap-1"
+                :class="selectedCards.size > 0 ? 'bg-red-600 text-white hover:bg-red-700 active:scale-95' : 'bg-red-50 text-red-500 border border-red-200 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400 hover:bg-red-100'"
+                title="批量删除勾选的卡密"
+                @click="handleBatchDeleteCards('selected')"
+              >
+                <span class="i-carbon-trash-can text-sm" />
+                删除所选{{ selectedCards.size > 0 ? ` (${selectedCards.size})` : '' }}
+              </button>
+            </div>
+
+            <!-- 分类一键秒清按钮 -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <button
+                class="rounded-lg border border-gray-200 bg-white/70 px-2 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"
+                title="清理所有已被用户激活充值的历史卡密"
+                @click="handleBatchDeleteCards('used')"
+              >
+                清理所有已使用
+              </button>
+              <button
+                class="rounded-lg border border-gray-200 bg-white/70 px-2 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 hover:text-red-600 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-300"
+                title="清理所有已停用禁用的废弃卡密"
+                @click="handleBatchDeleteCards('disabled')"
+              >
+                清理已禁用
+              </button>
             </div>
           </div>
 
-          <div class="flex gap-2">
-            <button
-              class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-              :class="cardTypeFilter === 'all'
-                ? 'text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
-              :style="cardTypeFilter === 'all' ? { backgroundColor: 'var(--theme-primary)' } : {}"
-              @click="cardTypeFilter = 'all'"
-            >
-              全部
-            </button>
-            <button
-              class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-              :class="cardTypeFilter === 'time'
-                ? 'text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
-              :style="cardTypeFilter === 'time' ? { backgroundColor: 'var(--theme-primary)' } : {}"
-              @click="cardTypeFilter = 'time'"
-            >
-              时间卡密
-            </button>
-            <button
-              class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-              :class="cardTypeFilter === 'quota'
-                ? 'text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'"
-              :style="cardTypeFilter === 'quota' ? { backgroundColor: 'var(--theme-primary)' } : {}"
-              @click="cardTypeFilter = 'quota'"
-            >
-              配额卡密
-            </button>
-          </div>
+          <!-- 筛选与搜索控制栏 -->
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex gap-1.5 p-1 rounded-xl border border-white/60 bg-white/40 backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/40">
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition"
+                :class="cardTypeFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="cardTypeFilter = 'all'"
+              >
+                全部卡密
+              </button>
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition"
+                :class="cardTypeFilter === 'time'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="cardTypeFilter = 'time'"
+              >
+                时间卡密
+              </button>
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition"
+                :class="cardTypeFilter === 'quota'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="cardTypeFilter = 'quota'"
+              >
+                额度卡密
+              </button>
+            </div>
 
-          <div class="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5 shadow dark:bg-gray-800">
-            <input
-              v-model="searchQuery"
-              placeholder="搜索卡密、描述或使用者..."
-              class="h-8 w-64 border border-gray-300 rounded-lg bg-white px-3 text-sm text-gray-900 outline-none transition-all dark:border-gray-600 focus:border-green-500 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-green-500/20"
-            >
-            <select
-              v-model="filterStatus"
-              class="h-8 border border-gray-300 rounded-lg bg-white px-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">
-                全部状态
-              </option>
-              <option value="unused">
-                未使用
-              </option>
-              <option value="used">
-                已使用
-              </option>
-              <option value="enabled">
-                已启用
-              </option>
-              <option value="disabled">
-                已禁用
-              </option>
-            </select>
-          </div>
-
-          <div v-if="selectedCards.size > 0" class="flex items-center gap-3 rounded-lg p-3" style="background-color: rgba(var(--theme-primary-rgb, 59, 130, 246), 0.1);">
-            <span style="color: var(--theme-primary);">
-              已选择 {{ selectedCards.size }} 个卡密            </span>
-            <BaseButton variant="secondary" size="sm" @click="copySelectedCards">
-              一键复制
-            </BaseButton>
-            <BaseButton variant="danger" size="sm" @click="deleteSelectedCards">
-              批量删除
-            </BaseButton>
-            <button
-              class="ml-auto text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700"
-              @click="selectedCards.clear(); selectAll = false"
-            >
-              清除选择
-            </button>
+            <div class="flex flex-1 sm:flex-initial items-center gap-2 rounded-xl border border-white/60 bg-white/45 px-2.5 py-1.5 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-gray-800/40">
+              <input
+                v-model="searchQuery"
+                placeholder="搜索卡密、描述或使用者..."
+                class="h-7 w-full sm:w-56 border-0 bg-transparent text-xs text-gray-900 outline-none placeholder-gray-400 dark:text-white"
+              >
+              <select
+                v-model="filterStatus"
+                class="h-7 rounded-lg border border-gray-200/60 bg-white/60 px-1.5 text-xs text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-700/60 dark:text-gray-200"
+              >
+                <option value="all">全部状态</option>
+                <option value="free">免费卡密</option>
+                <option value="unused">未使用</option>
+                <option value="used">已使用</option>
+                <option value="enabled">已启用</option>
+                <option value="disabled">已禁用</option>
+              </select>
+            </div>
           </div>
 
           <div v-if="cardsLoading" class="py-8 text-center text-gray-500">
@@ -988,184 +1145,327 @@ onUnmounted(() => {
             <div>加载中...</div>
           </div>
 
-          <div v-else class="overflow-hidden rounded-xl border border-gray-100/80 bg-white/40 backdrop-blur-sm dark:border-gray-800/80 dark:bg-gray-800/30">
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th class="px-3 py-2 text-left">
-                      <input
-                        v-model="selectAll"
-                        type="checkbox"
-                        class="border-gray-300 rounded"
-                        @change="toggleSelectAll"
-                      >
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      卡密
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      描述
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      类型
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      数量
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      状态
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      使用者
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      生成时间
-                    </th>
-                    <th class="px-4 py-2 text-left text-xs text-gray-500 font-medium dark:text-gray-300">
-                      使用时间
-                    </th>
-                    <th class="px-4 py-2 text-right text-xs text-gray-500 font-medium dark:text-gray-300">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr v-for="card in filteredCards" :key="card.code" class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                    <td class="px-3 py-2">
-                      <input
-                        :checked="selectedCards.has(card.code)"
-                        type="checkbox"
-                        class="border-gray-300 rounded"
-                        @change="toggleSelectCard(card.code)"
-                      >
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2">
-                      <code class="rounded bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-700">{{ card.code }}</code>
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-900 dark:text-white">
-                      {{ card.description }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-xs"
-                        :class="card.type === 'quota' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'"
-                      >
-                        {{ getCardTypeLabel(card) }}
-                      </span>
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-900 dark:text-white">
+          <div v-else>
+            <!-- 1. 桌面端：通透液态毛玻璃表格 -->
+            <div class="hidden sm:block overflow-hidden rounded-2xl border border-white/60 bg-white/45 backdrop-blur-md shadow-sm dark:border-gray-800/80 dark:bg-gray-800/40">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200/60 dark:divide-gray-700/60">
+                  <thead class="bg-gray-50/60 dark:bg-gray-800/60">
+                    <tr>
+                      <th class="px-3 py-2.5 text-left w-8">
+                        <input
+                          v-model="selectAll"
+                          type="checkbox"
+                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          @change="toggleSelectAll"
+                        >
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        卡密代码 (点击复制)
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        描述
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        类型
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        天数/数量
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        状态
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        使用者
+                      </th>
+                      <th class="px-3 py-2.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        创建时间
+                      </th>
+                      <th class="px-3 py-2.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100/70 dark:divide-gray-700/50">
+                    <tr v-for="card in filteredCards" :key="card.code" class="transition hover:bg-white/50 dark:hover:bg-gray-700/30">
+                      <td class="px-3 py-2.5">
+                        <input
+                          :checked="selectedCards.has(card.code)"
+                          type="checkbox"
+                          class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          @change="toggleSelectCard(card.code)"
+                        >
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5">
+                        <button
+                          class="group inline-flex items-center gap-1.5 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 py-1 font-mono text-xs font-semibold text-gray-800 transition hover:border-blue-300 hover:bg-blue-50/60 hover:text-blue-600 dark:border-gray-700 dark:bg-gray-800/80 dark:text-gray-200 dark:hover:text-blue-300"
+                          title="点击快速复制卡密"
+                          @click="copyCode(card.code)"
+                        >
+                          <span>{{ card.code }}</span>
+                          <span class="i-carbon-copy text-[11px] opacity-40 group-hover:opacity-100" />
+                        </button>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                        {{ card.description }}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5">
+                        <div class="flex items-center gap-1">
+                          <span
+                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                            :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'"
+                          >
+                            {{ card.type === 'quota' ? '额度卡' : '时间卡' }}
+                          </span>
+                          <span
+                            v-if="card.isFree"
+                            class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                          >
+                            免费
+                          </span>
+                        </div>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
+                        {{ getCardValueLabel(card) }}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5">
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                          :class="!card.enabled ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300' : (card.usedBy ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300')"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full" :class="!card.enabled ? 'bg-red-500' : (card.usedBy ? 'bg-gray-400' : 'bg-emerald-500')" />
+                          {{ !card.enabled ? '已禁用' : (card.usedBy ? '已使用' : '待使用') }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400">
+                        {{ card.usedBy || '-' }}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-400 font-mono">
+                        {{ card.createdAt ? new Date(card.createdAt).toLocaleDateString() : '-' }}
+                      </td>
+                      <td class="whitespace-nowrap px-3 py-2.5 text-right text-xs font-medium">
+                        <button class="mr-2 text-blue-600 hover:underline dark:text-blue-400" @click="copyCode(card.code)">
+                          复制
+                        </button>
+                        <button
+                          class="mr-2 hover:underline"
+                          :class="card.enabled ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'"
+                          @click="toggleCardStatus(card)"
+                        >
+                          {{ card.enabled ? '禁用' : '启用' }}
+                        </button>
+                        <button class="text-red-600 hover:underline dark:text-red-400" @click="deleteCard(card)">
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="filteredCards.length === 0">
+                      <td colspan="9" class="px-4 py-8 text-center text-xs text-gray-400">
+                        {{ searchQuery ? '未找到匹配的卡密' : '暂无卡密数据' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 2. 移动端：自适应独立卡密卡片流（绝不横向撑爆，单手操作极佳） -->
+            <div class="sm:hidden space-y-2.5">
+              <div
+                v-for="card in filteredCards"
+                :key="card.code"
+                class="rounded-2xl border border-white/60 bg-white/55 p-3.5 shadow-sm backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/50"
+              >
+                <!-- 卡片头部：多选勾选框 + 卡密代码 + 类型徽章 + 状态 -->
+                <div class="flex items-center justify-between pb-2.5 border-b border-gray-100/80 dark:border-gray-700/50">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <input
+                      :checked="selectedCards.has(card.code)"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      @change="toggleSelectCard(card.code)"
+                    >
+                    <button
+                      class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-gray-50/80 px-2 py-0.5 font-mono text-xs font-bold text-gray-800 active:bg-blue-100 active:text-blue-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                      title="点击快速复���卡密"
+                      @click="copyCode(card.code)"
+                    >
+                      <span>{{ card.code }}</span>
+                      <span class="i-carbon-copy text-[11px] opacity-50" />
+                    </button>
+                    <span
+                      class="rounded-full px-2 py-0.2 text-[10px] font-semibold"
+                      :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'"
+                    >
+                      {{ card.type === 'quota' ? '额度' : '时长' }}
+                    </span>
+                    <span
+                      v-if="card.isFree"
+                      class="rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                    >
+                      免费
+                    </span>
+                  </div>
+
+                  <span
+                    class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                    :class="!card.enabled ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200' : (card.usedBy ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200')"
+                  >
+                    {{ !card.enabled ? '已禁用' : (card.usedBy ? '已使用' : '待使用') }}
+                  </span>
+                </div>
+
+                <!-- 卡片中部信息网格 -->
+                <div class="grid grid-cols-2 gap-2 py-2 text-xs">
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">描述名称</span>
+                    <span class="font-medium text-gray-800 dark:text-gray-200 mt-0.5 truncate">
+                      {{ card.description || '未命名' }}
+                    </span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">面额天数</span>
+                    <span class="font-bold text-gray-800 dark:text-gray-200 mt-0.5">
                       {{ getCardValueLabel(card) }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2">
-                      <span
-                        class="inline-flex rounded-full px-2 py-0.5 text-xs"
-                        :class="card.enabled ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'"
-                      >
-                        {{ card.enabled ? '启用' : '禁用' }}
-                      </span>
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                      {{ card.usedBy || '-' }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                      {{ card.createdAt ? new Date(card.createdAt).toLocaleString() : '-' }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                      {{ card.usedAt ? new Date(card.usedAt).toLocaleString() : '-' }}
-                    </td>
-                    <td class="whitespace-nowrap px-4 py-2 text-right text-sm">
-                      <button class="mr-2 hover:opacity-80" style="color: var(--theme-primary);" @click="copyCode(card.code)">
-                        复制
-                      </button>
-                      <button class="mr-2 hover:opacity-80" style="color: var(--theme-primary);" @click="toggleCardStatus(card)">
-                        {{ card.enabled ? '禁用' : '启用' }}
-                      </button>
-                      <button class="text-red-600 dark:text-red-400 hover:text-red-900" @click="deleteCard(card)">
-                        删除
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="filteredCards.length === 0">
-                    <td colspan="10" class="px-4 py-4 text-center text-gray-500 dark:text-gray-400">
-                      暂无卡密
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    </span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">创建时间</span>
+                    <span class="font-mono text-gray-600 dark:text-gray-400 mt-0.5 text-[11px]">
+                      {{ card.createdAt ? new Date(card.createdAt).toLocaleDateString() : '-' }}
+                    </span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">使用人</span>
+                    <span class="font-medium text-gray-700 dark:text-gray-300 mt-0.5 truncate">
+                      {{ card.usedBy || '暂未使用' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 卡片底部操作栏 -->
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 dark:border-gray-700/50">
+                  <button
+                    class="rounded-lg border border-blue-200 bg-blue-50/70 px-2.5 py-1 text-xs font-semibold text-blue-600 active:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 transition"
+                    @click="copyCode(card.code)"
+                  >
+                    一键复制
+                  </button>
+                  <button
+                    class="rounded-lg border px-2.5 py-1 text-xs font-semibold transition"
+                    :class="card.enabled ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'"
+                    @click="toggleCardStatus(card)"
+                  >
+                    {{ card.enabled ? '禁用' : '启用' }}
+                  </button>
+                  <button
+                    class="rounded-lg border border-red-200 bg-red-50/70 px-2.5 py-1 text-xs font-semibold text-red-600 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300 transition"
+                    @click="deleteCard(card)"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredCards.length === 0" class="py-8 text-center text-xs text-gray-400">
+                {{ searchQuery ? '未找到匹配的卡密' : '暂无卡密数据' }}
+              </div>
             </div>
           </div>
 
           <div
             v-if="showCreateModal"
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-sm"
+            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-3 sm:p-4 backdrop-blur-sm"
             @click.self="showCreateModal = false"
           >
-            <div class="max-w-md w-full max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:p-6" @click.stop>
-              <div class="mb-4 flex items-center justify-between border-b border-gray-100 pb-2.5 dark:border-gray-700">
-                <h2 class="text-base sm:text-lg text-gray-900 font-bold dark:text-white">
+            <div class="max-w-md w-full max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden" @click.stop>
+              <!-- 固定顶部标题栏 -->
+              <div class="flex-none px-5 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
+                <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <span class="i-carbon-add-alt text-blue-500" />
                   创建卡密
                 </h2>
                 <button
-                  class="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  class="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-700 transition"
                   @click="showCreateModal = false"
                 >
-                  <div class="i-carbon-close text-xl" />
+                  <div class="i-carbon-close text-lg" />
                 </button>
               </div>
-              <div class="space-y-3">
+
+              <!-- 中间自适应滚动表单区 -->
+              <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar">
                 <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     描述
                   </label>
                   <BaseInput
                     v-model="newCard.description"
-                    placeholder="例如：月卡2024"
+                    placeholder="例如：月卡2024 / 体验卡"
                   />
                 </div>
+
                 <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
+                  <label class="mb-1.5 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                     卡密类型
                   </label>
-                  <div class="flex gap-4">
-                    <label class="flex cursor-pointer items-center gap-2">
-                      <input
-                        v-model="newCard.type"
-                        type="radio"
-                        value="time"
-                        class="text-blue-600 focus:ring-blue-500"
-                      >
-                      <span class="text-sm text-gray-700 dark:text-gray-300">时间卡（增加使用时长）</span>
-                      <label class="flex cursor-pointer items-center gap-2">
-                        <input
-                          v-model="newCard.type"
-                          type="radio"
-                          value="quota"
-                          class="text-orange-600 focus:ring-orange-500"
-                        >
-                        <span class="text-sm text-gray-700 dark:text-gray-300">额度卡（增加账号额度）</span>
-                      </label></label>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label
+                      class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
+                      :class="newCard.type === 'time' ? 'border-blue-500 bg-blue-50/60 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
+                    >
+                      <input v-model="newCard.type" type="radio" value="time" class="hidden">
+                      <span class="i-carbon-time" />
+                      时间卡 (时长)
+                    </label>
+                    <label
+                      class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
+                      :class="newCard.type === 'quota' ? 'border-orange-500 bg-orange-50/60 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
+                    >
+                      <input v-model="newCard.type" type="radio" value="quota" class="hidden">
+                      <span class="i-carbon-user-avatar" />
+                      额度卡 (账号数)
+                    </label>
                   </div>
                 </div>
-                <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
+
+                <!-- 免费卡密勾选卡片 -->
+                <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                  <label class="flex cursor-pointer items-center justify-between select-none">
+                    <div class="flex items-center gap-2">
+                      <input
+                        v-model="newCard.isFree"
+                        type="checkbox"
+                        class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700"
+                      >
+                      <span class="text-xs font-bold text-gray-800 dark:text-gray-200">免费卡密</span>
+                    </div>
+                    <span class="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                      29天限领一次
+                    </span>
                   </label>
+                  <p class="mt-1 text-[11px] text-gray-500 pl-6 dark:text-gray-400 leading-tight">
+                    勾选后带专属免费标识，供注册页领取，并受严格29天频次风控。
+                  </p>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
+                    </label>
+                    <span v-if="newCard.type === 'time'" class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                  </div>
                   <BaseInput
                     v-model.number="newCard.days"
                     type="number"
                     :placeholder="newCard.type === 'quota' ? '可添加的账号数量' : '天数'"
                   />
-                  <p v-if="newCard.type === 'time'" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    输入-1表示永久，其他数字表示天数
-                  </p>
-                  <p v-else class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    用户使用后可增加的账号额度数量
-                  </p>
                 </div>
+
                 <div>
-                  <label class="mb-1 block text-sm text-gray-700 font-medium dark:text-gray-300">
-                    数量
+                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                    生成数量 (1-100)
                   </label>
                   <BaseInput
                     v-model.number="newCard.count"
@@ -1174,18 +1474,264 @@ onUnmounted(() => {
                     max="100"
                     placeholder="数量"
                   />
-                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    批量创建数量（1-100），批量创建后会自动导出文件
-                  </p>
                 </div>
               </div>
-              <div class="mt-5 flex justify-end space-x-3">
+
+              <!-- 固定底部操作按钮栏（移动端永不截断） -->
+              <div class="flex-none px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/80">
                 <BaseButton variant="secondary" size="sm" @click="showCreateModal = false">
                   取消
                 </BaseButton>
                 <BaseButton variant="primary" size="sm" @click="createCard">
-                  创建
+                  确认创建
                 </BaseButton>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 挂机列表（本站所有挂机账号） -->
+        <div v-else-if="activeTab === 'botAccounts'" class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <span class="i-carbon-bot text-xl text-blue-500" />
+                全站挂机账号列表
+              </h3>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                实时展示本站所有用户添加的农场挂机实例
+              </p>
+            </div>
+            <BaseButton variant="primary" size="sm" @click="fetchAllBotAccounts">
+              <span class="i-carbon-renew mr-1" />
+              刷新
+            </BaseButton>
+          </div>
+
+          <!-- 筛选与搜索工具栏 -->
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex gap-1.5 p-1 rounded-xl border border-white/60 bg-white/40 backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/40">
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition"
+                :class="botAccountPlatformFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="botAccountPlatformFilter = 'all'"
+              >
+                全部 ({{ botAccounts.length }})
+              </button>
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1"
+                :class="botAccountPlatformFilter === 'qq' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="botAccountPlatformFilter = 'qq'"
+              >
+                <img src="/qq-icon.svg" class="h-3.5 w-3.5 object-contain" alt="QQ" />
+                QQ ({{ qqBotAccountsCount }})
+              </button>
+              <button
+                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1"
+                :class="botAccountPlatformFilter === 'wx' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
+                @click="botAccountPlatformFilter = 'wx'"
+              >
+                <span class="i-carbon-logo-wechat text-xs text-emerald-500" />
+                微信 ({{ wxBotAccountsCount }})
+              </button>
+            </div>
+
+            <div class="flex flex-1 sm:flex-initial items-center gap-2 rounded-xl border border-white/60 bg-white/45 px-2.5 py-1.5 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-gray-800/40">
+              <input
+                v-model="botAccountSearch"
+                placeholder="搜索账号名、归属人或QQ..."
+                class="h-7 w-full sm:w-56 border-0 bg-transparent text-xs text-gray-900 outline-none placeholder-gray-400 dark:text-white"
+              >
+              <select
+                v-model="botAccountStatusFilter"
+                class="h-7 rounded-lg border border-gray-200/60 bg-white/60 px-1.5 text-xs text-gray-700 outline-none dark:border-gray-700 dark:bg-gray-700/60 dark:text-gray-200"
+              >
+                <option value="all">全部运行状态</option>
+                <option value="running">运行中 (在线)</option>
+                <option value="stopped">已停止 (离线)</option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="botAccountsLoading" class="py-12 text-center text-gray-500">
+            <div i-svg-spinners-90-ring-with-bg class="mb-2 inline-block text-2xl" />
+            <div>正在加载挂机账号...</div>
+          </div>
+
+          <div v-else>
+            <!-- 1. 桌面端：通透液态毛玻璃表格 -->
+            <div class="hidden sm:block overflow-hidden rounded-2xl border border-white/60 bg-white/45 backdrop-blur-md shadow-sm dark:border-gray-800/80 dark:bg-gray-800/40">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200/60 dark:divide-gray-700/60">
+                  <thead class="bg-gray-50/60 dark:bg-gray-800/60">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        头像与账号
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        等级
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        所属平台
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        归属用户
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        到期时间
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        添加时间
+                      </th>
+                      <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        运行状态
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100/70 dark:divide-gray-700/50">
+                    <tr v-for="acc in filteredBotAccounts" :key="acc.id" class="transition hover:bg-white/50 dark:hover:bg-gray-700/30">
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <div class="flex items-center gap-3">
+                          <img
+                            :src="acc.avatar || '/icon.png'"
+                            class="h-9 w-9 rounded-full object-cover border border-white/80 shadow-sm bg-gray-100 dark:bg-gray-700"
+                            alt="头像"
+                            referrerpolicy="no-referrer"
+                          >
+                          <div class="flex flex-col">
+                            <span class="font-bold text-gray-900 dark:text-white">{{ acc.name }}</span>
+                            <span v-if="acc.accountName && acc.accountName !== acc.name" class="text-xs text-gray-400">备注: {{ acc.accountName }}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        Lv.{{ acc.level }}
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                          :class="acc.platform === 'qq' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'"
+                        >
+                          <img v-if="acc.platform === 'qq'" src="/qq-icon.svg" class="h-3.5 w-3.5 object-contain" alt="QQ" />
+                          <span v-else class="i-carbon-logo-wechat text-emerald-500" />
+                          {{ acc.platform === 'qq' ? 'QQ农场' : '微信农场' }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-gray-100/80 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-700/80 dark:text-gray-200">
+                          <span class="i-carbon-user" />
+                          {{ acc.username }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm font-mono">
+                        <span v-if="acc.isPermanent || !acc.expiresAt" class="inline-flex items-center gap-1 font-bold text-purple-600 dark:text-purple-400">
+                          <span class="i-carbon-infinity text-sm" />
+                          永久
+                        </span>
+                        <span v-else :class="acc.expiresAt < Date.now() ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300'">
+                          {{ formatDate(acc.expiresAt) }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-500 font-mono dark:text-gray-400">
+                        {{ acc.createdAt ? new Date(acc.createdAt).toLocaleString() : '历史账号' }}
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right">
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
+                          :class="acc.running ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                        >
+                          <span class="h-2 w-2 rounded-full" :class="acc.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'" />
+                          {{ acc.running ? '挂机运行中' : '已停止' }}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr v-if="filteredBotAccounts.length === 0">
+                      <td colspan="6" class="px-4 py-8 text-center text-xs text-gray-400">
+                        {{ botAccountSearch ? '未找到匹配的挂机账号' : '暂无挂机账号' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 2. 移动端：自适应独立挂机卡片流 -->
+            <div class="sm:hidden space-y-2.5">
+              <div
+                v-for="acc in filteredBotAccounts"
+                :key="acc.id"
+                class="rounded-2xl border border-white/60 bg-white/55 p-3.5 shadow-sm backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/50"
+              >
+                <!-- 卡片头部：头像 + 账号名 + 运行状态 -->
+                <div class="flex items-center justify-between pb-2.5 border-b border-gray-100/80 dark:border-gray-700/50">
+                  <div class="flex items-center gap-2.5">
+                    <img
+                      :src="acc.avatar || '/icon.png'"
+                      class="h-9 w-9 rounded-full object-cover border border-white/80 shadow-sm bg-gray-100 dark:bg-gray-700"
+                      alt="头像"
+                      referrerpolicy="no-referrer"
+                    >
+                    <div class="flex flex-col">
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-gray-900 dark:text-white text-sm">{{ acc.name }}</span>
+                        <span class="text-xs font-bold text-amber-600 dark:text-amber-400">Lv.{{ acc.level }}</span>
+                      </div>
+                      <span v-if="acc.accountName && acc.accountName !== acc.name" class="text-[11px] text-gray-400 truncate max-w-[150px]">
+                        备注: {{ acc.accountName }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold"
+                    :class="acc.running ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                  >
+                    <span class="h-1.5 w-1.5 rounded-full" :class="acc.running ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'" />
+                    {{ acc.running ? '运行中' : '已停止' }}
+                  </span>
+                </div>
+
+                <!-- 卡片中部信息网格（超紧凑双列 + 到期时间） -->
+                <div class="grid grid-cols-2 gap-2 py-2 text-xs">
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">所属平台</span>
+                    <span class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5 flex items-center gap-1.5">
+                      <img v-if="acc.platform === 'qq'" src="/qq-icon.svg" class="h-3.5 w-3.5 object-contain" alt="QQ" />
+                      <span v-else class="i-carbon-logo-wechat text-emerald-500" />
+                      {{ acc.platform === 'qq' ? 'QQ 农场' : '微信农场' }}
+                    </span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-gray-400">归属用户</span>
+                    <span class="font-semibold text-gray-800 dark:text-gray-200 mt-0.5 flex items-center gap-1 truncate">
+                      <span class="i-carbon-user text-gray-400" />
+                      {{ acc.username }}
+                    </span>
+                  </div>
+                  <div class="flex flex-col pt-1">
+                    <span class="text-gray-400">到期时间</span>
+                    <span class="font-mono font-medium mt-0.5 text-[11px]">
+                      <template v-if="acc.isPermanent || !acc.expiresAt">
+                        <b class="text-purple-600 dark:text-purple-400 font-bold">永久</b>
+                      </template>
+                      <template v-else>
+                        <span :class="acc.expiresAt < Date.now() ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300'">
+                          {{ formatDate(acc.expiresAt) }}
+                        </span>
+                      </template>
+                    </span>
+                  </div>
+                  <div class="flex flex-col pt-1">
+                    <span class="text-gray-400">添加时间</span>
+                    <span class="font-mono text-gray-500 dark:text-gray-400 mt-0.5 text-[11px] truncate">
+                      {{ acc.createdAt ? new Date(acc.createdAt).toLocaleDateString() : '历史账号' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="filteredBotAccounts.length === 0" class="py-8 text-center text-xs text-gray-400">
+                {{ botAccountSearch ? '未找到匹配的挂机账号' : '暂无挂机账号数据' }}
               </div>
             </div>
           </div>
@@ -1207,7 +1753,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex items-center gap-2 rounded-lg bg-white px-2 py-1.5 shadow dark:bg-gray-800">
+          <div class="flex items-center gap-2 rounded-xl border border-white/60 bg-white/45 px-2.5 py-1.5 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-gray-800/40">
             <input
               v-model="userSearchQuery"
               placeholder="搜索用户..."
@@ -1220,101 +1766,218 @@ onUnmounted(() => {
             <div>加载中...</div>
           </div>
 
-          <div v-else class="overflow-hidden rounded-xl border border-gray-100/80 bg-white/40 backdrop-blur-sm dark:border-gray-800/80 dark:bg-gray-800/30">
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      用户名
-                    </th>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      角色
-                    </th>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      额度
-                    </th>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      时长
-                    </th>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      过期时间
-                    </th>
-                    <th class="px-3 py-2 text-left text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      状态
-                    </th>
-                    <th class="px-3 py-2 text-right text-xs text-gray-500 font-medium uppercase dark:text-gray-300">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
-                  <tr v-for="user in filteredUsers" :key="user.username">
-                    <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 font-medium dark:text-white">
-                      {{ user.username }}
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-white">
-                      <span
-                        class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
-                        :class="user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'"
-                      >
-                        {{ user.role === 'admin' ? '管理员' : '用户' }}
-                      </span>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-white">
-                      <span
-                        class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
-                        :class="user.role === 'admin' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'"
-                      >
-                        {{ user.role === 'admin' ? '无限制' : `${String(user.accountLimit || 2)}个` }}
-                      </span>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-white">
-                      {{ user.card ? getDaysLabel(user.card.days) : '-' }}
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2 text-sm" :class="isExpired(user.card) ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'">
-                      {{ formatDate(user.card?.expiresAt || null) }}
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2">
-                      <span
-                        v-if="user.card"
-                        class="inline-flex rounded-full px-2 text-xs font-semibold leading-5"
-                        :class="user.card.enabled === false ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : (isExpired(user.card) ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200')"
-                      >
-                        {{ user.card.enabled === false ? '封禁' : (isExpired(user.card) ? '已过期' : '正常') }}
-                      </span>
-                      <span v-else class="text-gray-500 dark:text-gray-400">-</span>
-                    </td>
-                    <td class="whitespace-nowrap px-3 py-2 text-right text-sm font-medium">
-                      <button
-                        class="mr-3 text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
-                        @click="openEditModal(user)"
-                      >
-                        编辑
-                      </button>
-                      <button
-                        v-if="user.card"
-                        class="mr-3 text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300"
-                        @click="toggleUserStatus(user)"
-                      >
-                        {{ user.card.enabled === false ? '解封' : '封禁' }}
-                      </button>
-                      <button
-                        v-if="user.username !== currentUsername"
-                        class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                        @click="deleteUser(user)"
-                      >
-                        删除
-                      </button>
-                    </td>
-                  </tr>
-                  <tr v-if="filteredUsers.length === 0">
-                    <td colspan="8" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">
-                      {{ userSearchQuery ? '未找到匹配的用户' : '暂无用户' }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <div v-else>
+            <!-- 1. 桌面端：通透液态毛玻璃表格 -->
+            <div class="hidden sm:block overflow-hidden rounded-2xl border border-white/60 bg-white/45 backdrop-blur-md shadow-sm dark:border-gray-800/80 dark:bg-gray-800/40">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200/60 dark:divide-gray-700/60">
+                  <thead class="bg-gray-50/60 dark:bg-gray-800/60">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        用户名
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        角色
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        在线挂机
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        额度
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        注册时间
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        到期时间
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        状态
+                      </th>
+                      <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        操作
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100/70 dark:divide-gray-700/50">
+                    <tr v-for="user in filteredUsers" :key="user.username" class="transition hover:bg-white/50 dark:hover:bg-gray-700/30">
+                      <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        <div class="flex items-center gap-2">
+                          <span class="h-2 w-2 rounded-full" :class="user.card?.enabled === false ? 'bg-red-400' : (isExpired(user.card) ? 'bg-amber-400' : 'bg-emerald-400')" />
+                          {{ user.username }}
+                        </div>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <span
+                          class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          :class="user.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'"
+                        >
+                          {{ user.role === 'admin' ? '管理员' : '普通用户' }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold"
+                          :class="(user.runningAccountsCount || 0) > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full" :class="(user.runningAccountsCount || 0) > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'" />
+                          {{ user.runningAccountsCount || 0 }} 个在线
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm">
+                        <span
+                          class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium"
+                          :class="user.role === 'admin' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300'"
+                        >
+                          {{ user.role === 'admin' ? '无限制' : `${String(user.accountLimit || 2)} 个账号` }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-500 font-mono dark:text-gray-400">
+                        {{ user.createdAt ? formatDate(user.createdAt) : '-' }}
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-sm font-mono" :class="isExpired(user.card) ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'">
+                        <span v-if="user.role === 'admin' || user.card?.days === -1 || (!user.card?.expiresAt && user.card)" class="inline-flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
+                          <span class="i-carbon-infinity text-sm" />
+                          永久
+                        </span>
+                        <span v-else>
+                          {{ formatDate(user.card?.expiresAt || null) }}
+                        </span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3">
+                        <span
+                          v-if="user.card"
+                          class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                          :class="user.card.enabled === false ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200' : (isExpired(user.card) ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200')"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full" :class="user.card.enabled === false ? 'bg-red-500' : (isExpired(user.card) ? 'bg-yellow-500' : 'bg-emerald-500')" />
+                          {{ user.card.enabled === false ? '已封禁' : (isExpired(user.card) ? '已到期' : '正常') }}
+                        </span>
+                        <span v-else class="text-xs text-gray-400">-</span>
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-right text-sm font-medium">
+                        <button
+                          class="mr-3 text-blue-600 dark:text-blue-400 hover:underline"
+                          @click="openEditModal(user)"
+                        >
+                          编辑
+                        </button>
+                        <button
+                          v-if="user.card"
+                          class="mr-3 hover:underline"
+                          :class="user.card.enabled === false ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'"
+                          @click="toggleUserStatus(user)"
+                        >
+                          {{ user.card.enabled === false ? '解封' : '封禁' }}
+                        </button>
+                        <button
+                          v-if="user.username !== currentUsername"
+                          class="text-red-600 dark:text-red-400 hover:underline"
+                          @click="deleteUser(user)"
+                        >
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="filteredUsers.length === 0">
+                      <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                        {{ userSearchQuery ? '未找到匹配的用户' : '暂无用户' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 2. 移动端：超紧凑高密度现代微卡片（体积缩减 45%，信息更充实） -->
+            <div class="sm:hidden space-y-2">
+              <div
+                v-for="user in filteredUsers"
+                :key="user.username"
+                class="rounded-xl border border-white/60 bg-white/55 p-2.5 shadow-sm backdrop-blur-md dark:border-gray-700/60 dark:bg-gray-800/50"
+              >
+                <!-- 顶行：用户信息 + 挂机状态胶囊 + 账号状态 -->
+                <div class="flex items-center justify-between gap-1.5 pb-1.5 border-b border-gray-100/70 dark:border-gray-700/50">
+                  <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="h-2 w-2 rounded-full flex-none" :class="user.card?.enabled === false ? 'bg-red-500' : (isExpired(user.card) ? 'bg-amber-500' : 'bg-emerald-500')" />
+                    <span class="font-bold text-gray-900 dark:text-white text-xs truncate max-w-[110px]">{{ user.username }}</span>
+                    <span
+                      class="rounded px-1.5 py-0.2 text-[10px] font-semibold flex-none"
+                      :class="user.role === 'admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'"
+                    >
+                      {{ user.role === 'admin' ? '管理员' : '用户' }}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-1.5 flex-none">
+                    <!-- 核心新增：挂机数量（当前在线正常运行数） -->
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[11px] font-bold"
+                      :class="(user.runningAccountsCount || 0) > 0 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                      title="当前正常在线运行的农场挂机账号"
+                    >
+                      <span class="h-1.5 w-1.5 rounded-full" :class="(user.runningAccountsCount || 0) > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'" />
+                      在线: {{ user.runningAccountsCount || 0 }}个
+                    </span>
+
+                    <span
+                      v-if="user.card"
+                      class="rounded-full px-1.5 py-0.2 text-[10px] font-semibold"
+                      :class="user.card.enabled === false ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200' : (isExpired(user.card) ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-200' : 'bg-green-100 text-green-800 dark:bg-green-900/60 dark:text-green-200')"
+                    >
+                      {{ user.card.enabled === false ? '封禁' : (isExpired(user.card) ? '到期' : '正常') }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 中间紧凑数据行：额度 / 注册时间 / 到期时间 -->
+                <div class="flex items-center justify-between text-[11px] py-1.5 text-gray-600 dark:text-gray-300">
+                  <div class="flex items-center gap-2.5">
+                    <span>配额: <b class="text-gray-800 dark:text-white font-mono">{{ user.role === 'admin' ? '无限' : `${user.accountLimit || 2}个` }}</b></span>
+                    <span>注册: <b class="text-gray-800 dark:text-white font-mono">{{ user.createdAt ? formatDate(user.createdAt) : '-' }}</b></span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    <span class="text-gray-400">到期:</span>
+                    <span class="font-mono" :class="isExpired(user.card) ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300'">
+                      <template v-if="user.role === 'admin' || user.card?.days === -1 || (!user.card?.expiresAt && user.card)">
+                        <b class="text-purple-600 dark:text-purple-400 font-bold">永久</b>
+                      </template>
+                      <template v-else>
+                        {{ formatDate(user.card?.expiresAt || null) }}
+                      </template>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- 底部极简紧凑操作按钮 -->
+                <div class="flex items-center justify-end gap-1.5 pt-1.5 border-t border-gray-100/70 dark:border-gray-700/50">
+                  <button
+                    class="rounded border border-blue-200 bg-blue-50/60 px-2 py-0.5 text-[11px] font-medium text-blue-600 active:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
+                    @click="openEditModal(user)"
+                  >
+                    编辑
+                  </button>
+                  <button
+                    v-if="user.card"
+                    class="rounded border px-2 py-0.5 text-[11px] font-medium transition"
+                    :class="user.card.enabled === false ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300'"
+                    @click="toggleUserStatus(user)"
+                  >
+                    {{ user.card.enabled === false ? '解封' : '封禁' }}
+                  </button>
+                  <button
+                    v-if="user.username !== currentUsername"
+                    class="rounded border border-red-200 bg-red-50/60 px-2 py-0.5 text-[11px] font-medium text-red-600 active:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+                    @click="deleteUser(user)"
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredUsers.length === 0" class="py-8 text-center text-xs text-gray-400">
+                {{ userSearchQuery ? '未找到匹配的用户' : '暂无用户' }}
+              </div>
             </div>
           </div>
 

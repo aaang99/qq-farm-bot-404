@@ -436,7 +436,59 @@ function startAdminServer(dataProvider) {
     app,
     adminRequired: adminRouteHelpers.adminRequired,
     invalidateAdminSessions,
+    provider,
+    getAccountsForUser,
   });
+
+  // ============ 定时巡查与到期账号自动熔断释放内存 ============
+  function sweepExpiredUsersAndStopWorkers() {
+    try {
+      const now = Date.now();
+      const allUsers = typeof userStore.getAllUsers === 'function' ? userStore.getAllUsers() : [];
+      const expiredUsernames = [];
+
+      for (const u of allUsers) {
+        if (u.role === 'admin' || u.role === 'super_admin') continue;
+        if (u.card && u.card.expiresAt && u.card.expiresAt < now) {
+          expiredUsernames.push(u.username);
+        }
+      }
+
+      if (expiredUsernames.length > 0) {
+        // 1. 踢出这些用户的在线 Session
+        if (typeof invalidateAdminSessions === 'function') {
+          invalidateAdminSessions((session) => expiredUsernames.includes(session.username));
+        }
+
+        // 2. 停用这些用户名下正在运行的农场 Worker 实例，彻底释放服务器内存和 CPU
+        const allAccounts = typeof getAccountsForUser === 'function' ? getAccountsForUser() : [];
+        for (const username of expiredUsernames) {
+          const userAccounts = allAccounts.filter(a => a.username === username);
+          for (const acc of userAccounts) {
+            if (provider && typeof provider.isAccountRunning === 'function' && provider.isAccountRunning(acc.id)) {
+              if (typeof provider.stopAccount === 'function') {
+                provider.stopAccount(acc.id);
+                if (provider.addAccountLog) {
+                  provider.addAccountLog(
+                    'expired_auto_stop',
+                    `用户【${username}】授权已到期，系统已自动停止农场挂机实例并释放内存`,
+                    String(acc.id),
+                    acc.name || String(acc.id),
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      adminLogger.warn(`过期账号自动熔断巡查异常: ${err.message}`);
+    }
+  }
+
+  // 服务启动后 15 秒执行初次清理，之后每 5 分钟自动巡查一次
+  setTimeout(sweepExpiredUsersAndStopWorkers, 15000);
+  setInterval(sweepExpiredUsersAndStopWorkers, 5 * 60 * 1000);
   registerRequestTimeoutGuard(app);
   registerAdminPublicInfoRoutes({
     app,

@@ -115,6 +115,75 @@ function registerAdminAccountRoutes({
     }
   });
 
+  // 管理员专用：获取本站所有挂机账号（包含头像、等级、平台、归属用户名、添加时间、运行状态）
+  app.get("/api/admin/all-accounts", (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
+        return res.status(403).json({ ok: false, error: "无权访问此数据" });
+      }
+
+      const allAccounts = getAccountsForUser();
+      const list = allAccounts.map(acc => {
+        let isRunning = false;
+        let liveLevel = null;
+        let liveNick = null;
+        try {
+          if (provider && typeof provider.isAccountRunning === 'function') {
+            isRunning = provider.isAccountRunning(acc.id);
+          }
+          if (provider && typeof provider.getStatus === 'function') {
+            const st = provider.getStatus(acc.id);
+            if (st && st.status) {
+              liveLevel = st.status.level;
+              liveNick = st.status.name || st.status.nick;
+            }
+          }
+        } catch {}
+
+        let avatarUrl = acc.avatar || '';
+        if (!avatarUrl && acc.uin) {
+          avatarUrl = `https://q1.qlogo.cn/g?b=qq&nk=${acc.uin}&s=100`;
+        }
+
+        // 查询归属用户的到期时间与永久状态
+        let userExpiresAt = null;
+        let isPermanent = false;
+        try {
+          const allU = typeof userStore.getAllUsers === 'function' ? userStore.getAllUsers() : [];
+          const targetU = (acc.username || 'admin').trim().toLowerCase();
+          const ownerUser = allU.find(u => String(u.username || '').toLowerCase() === targetU);
+          if (ownerUser) {
+            if (ownerUser.role === 'admin' || ownerUser.role === 'super_admin' || ownerUser.card?.days === -1 || (!ownerUser.card?.expiresAt && ownerUser.card)) {
+              isPermanent = true;
+            } else if (ownerUser.card && ownerUser.card.expiresAt) {
+              userExpiresAt = ownerUser.card.expiresAt;
+            }
+          }
+        } catch {}
+
+        return {
+          id: acc.id,
+          name: liveNick || acc.nick || acc.name || `农场账号#${acc.id}`,
+          accountName: acc.name,
+          platform: (acc.platform || 'qq').toLowerCase(),
+          level: Number(liveLevel || acc.level || 1),
+          avatar: avatarUrl,
+          username: acc.username || 'admin',
+          running: isRunning,
+          createdAt: acc.createdAt || acc.created_at || null,
+          expiresAt: userExpiresAt,
+          isPermanent,
+          uin: acc.uin || '',
+        };
+      });
+
+      res.json({ ok: true, data: list, count: list.length });
+    } catch (error) {
+      res.status(500).json({ ok: false, error: error.message });
+    }
+  });
+
   app.get("/api/accounts", (req, res) => {
     try {
       const currentUser = req.currentUser;

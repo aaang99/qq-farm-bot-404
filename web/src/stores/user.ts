@@ -203,8 +203,8 @@ export const useUserStore = defineStore('user', () => {
     return res.data
   }
 
-  async function createCard(description: string, days: number, count?: number, type?: 'time' | 'quota') {
-    const res = await api.post('/api/admin/cards', { description, days, count, type })
+  async function createCard(description: string, days: number, count?: number, type?: 'time' | 'quota', isFree?: boolean) {
+    const res = await api.post('/api/admin/cards', { description, days, count, type, isFree })
     return res.data
   }
 

@@ -4,6 +4,8 @@ function registerAdminUserManagementRoutes({
   app,
   adminRequired,
   invalidateAdminSessions,
+  provider,
+  getAccountsForUser,
 }) {
   // ============ 卡密管理 API ============
   app.get("/api/admin/cards", adminRequired, (_req, res) => {
@@ -17,21 +19,23 @@ function registerAdminUserManagementRoutes({
 
   app.post("/api/admin/cards", adminRequired, (req, res) => {
     try {
-      const { description, days, count, type } = req.body || {};
+      const { description, days, count, type, isFree } = req.body || {};
       if (!description || days === undefined) {
         return res.status(400).json({ ok: false, error: "请提供描述和天数" });
       }
       const cardType = type === "quota" ? "quota" : "time";
+      const freeFlag = Boolean(isFree);
       if (count && Number.parseInt(count, 10) > 1) {
         const cards = userStore.createCardsBatch(
           description,
           days,
           Number.parseInt(count, 10),
-          cardType
+          cardType,
+          freeFlag
         );
         return res.json({ ok: true, data: cards, batch: true, count: cards.length });
       }
-      const card = userStore.createCard(description, days, cardType);
+      const card = userStore.createCard(description, days, cardType, freeFlag);
       res.json({ ok: true, data: card });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -102,7 +106,30 @@ function registerAdminUserManagementRoutes({
   app.get("/api/admin/users", adminRequired, (_req, res) => {
     try {
       const users = userStore.getAllUsers();
-      res.json({ ok: true, data: users });
+      // 获取当前所有运行中的账号，计算每个用户名下的正常在线挂机数
+      const allAccounts = typeof getAccountsForUser === 'function' ? getAccountsForUser() : [];
+      const runningCountByUser = {};
+
+      for (const acc of allAccounts) {
+        const u = acc.username || 'admin';
+        let isRunning = false;
+        try {
+          if (provider && typeof provider.isAccountRunning === 'function') {
+            isRunning = provider.isAccountRunning(acc.id);
+          }
+        } catch {}
+        if (isRunning) {
+          runningCountByUser[u] = (runningCountByUser[u] || 0) + 1;
+        }
+      }
+
+      const usersWithBotStats = users.map(u => ({
+        ...u,
+        createdAt: u.createdAt || u.created_at || (u.card ? u.card.createdAt : null) || null,
+        runningAccountsCount: runningCountByUser[u.username] || 0,
+      }));
+
+      res.json({ ok: true, data: usersWithBotStats });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
