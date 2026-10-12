@@ -64,7 +64,7 @@ onUnmounted(() => {
       <!-- Main Content Area -->
       <div class="min-h-0 flex flex-1 flex-col overflow-hidden">
         <MysteryMerchantBanner />
-        <div class="custom-scrollbar min-h-0 flex flex-1 flex-col overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:p-6 sm:p-4 md:pb-6 sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div class="custom-scrollbar min-h-0 flex flex-1 flex-col overflow-y-auto px-2 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-4 md:pt-4 md:pb-6">
           <RouterView v-slot="{ Component }">
             <component :is="Component" />
           </RouterView>

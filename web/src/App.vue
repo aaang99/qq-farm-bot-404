@@ -125,11 +125,11 @@ body {
 
 .ui-card-elevated {
   position: relative;
-  background: var(--liquid-glass-bg-hover);
+  background: var(--liquid-glass-bg);
   backdrop-filter: var(--liquid-glass-blur);
   -webkit-backdrop-filter: var(--liquid-glass-blur);
   border: 1px solid var(--liquid-glass-border);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  box-shadow: var(--liquid-glass-shadow);
   border-radius: 20px;
 }
 

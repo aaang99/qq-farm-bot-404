@@ -350,12 +350,23 @@ watch(
 
 .router-link-active .nav-icon-box,
 .router-link-exact-active .nav-icon-box {
-  background: var(--theme-gradient) !important;
-  border: 1px solid rgba(255, 255, 255, 0.5) !important;
-  color: #ffffff !important;
+  /* 告别厚重调色盘色块：改用高清水晶通透微光水滴底，图标本身呈主题色高清亮起 */
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1.5px solid rgba(255, 255, 255, 1) !important;
+  color: var(--theme-primary) !important;
   box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.6),
-    0 4px 14px color-mix(in srgb, var(--theme-primary) 35%, transparent) !important;
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    0 4px 12px rgba(15, 23, 42, 0.08) !important;
+}
+
+.dark .router-link-active .nav-icon-box,
+.dark .router-link-exact-active .nav-icon-box {
+  background: rgba(30, 41, 59, 0.85) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  color: #60a5fa !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.25) !important;
 }
 
 .router-link-active::before,
@@ -365,11 +376,11 @@ watch(
   top: 50%;
   left: -2px;
   width: 4px;
-  height: 60%;
+  height: 55%;
   transform: translateY(-50%);
   border-radius: 4px;
-  background: var(--theme-gradient);
-  box-shadow: 0 0 10px var(--theme-primary);
+  background: var(--theme-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--theme-primary) 60%, transparent);
 }
 
 /* 底部状态栏 */
