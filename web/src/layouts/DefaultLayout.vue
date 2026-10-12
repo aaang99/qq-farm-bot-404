@@ -111,16 +111,16 @@ onUnmounted(() => {
 }
 
 .liquid-btn-icon {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4);
 }
 
 .dark .liquid-btn-icon {
-  background: rgba(30, 41, 59, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15);
 }
 
