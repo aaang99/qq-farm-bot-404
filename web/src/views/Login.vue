@@ -12,6 +12,8 @@ const appVersion = __APP_VERSION__
 const gameVersion = ref('')
 
 const isLogin = ref(true)
+const showPassword = ref(false)
+const rememberAccount = ref(true)
 const username = ref('')
 const password = ref('')
 const cardCode = ref('')
@@ -173,45 +175,50 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
       <p class="tag mt-2">全自动智能托管 · 科技助农</p>
     </div>
 
-    <div class="tabs">
-      <button :class="['tb', isLogin && 'tb-on']" @click="isLogin = true">登 录</button>
-      <button :class="['tb', !isLogin && 'tb-on']" @click="isLogin = false">注 册</button>
-    </div>
+
+
+
 
     <form class="fm" @submit.prevent="handleSubmit">
       <div class="fld">
         <div class="inp">
           <span class="inp-ico">
-            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-            </svg>
+            <img src="/yonghu.svg" alt="用户" class="h-5 w-5 object-contain" />
           </span>
-          <input v-model="username" type="text" placeholder="用户名" autocomplete="username">
+          <input v-model="username" type="text" placeholder="请输入用户名" autocomplete="username">
         </div>
         <span v-if="username && !usernameValid.valid" class="input-hint">{{ usernameValid.message }}</span>
       </div>
       <div class="fld">
         <div class="inp">
           <span class="inp-ico">
-            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
-              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-            </svg>
+            <img src="/mima.svg" alt="密码" class="h-5 w-5 object-contain" />
           </span>
-          <input v-model="password" type="password" placeholder="密码" autocomplete="current-password">
+          <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="请输入密码" autocomplete="current-password">
+          <button type="button" class="pwd-eye-btn" @click="showPassword = !showPassword">
+            <span :class="showPassword ? 'i-carbon-view' : 'i-carbon-view-off'" />
+          </button>
         </div>
         <div v-if="showPasswordStrength && password" class="pwd">
           <span class="pwd-bar"><i :style="{ width: Math.min(passwordStrength.score * 12.5, 100) + '%', background: passwordStrength.color }" /></span>
           <small :style="{ color: passwordStrength.color }">{{ passwordStrength.level }}</small>
         </div>
       </div>
+      <!-- 记住账号 & 忘记密码 行 -->
+      <div v-if="isLogin" class="flex items-center justify-between px-1 text-xs text-gray-500 select-none">
+        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors">
+          <input v-model="rememberAccount" type="checkbox" class="h-4 w-4 rounded-full border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+          <span class="font-medium">记住账号</span>
+        </label>
+        <a href="#" class="font-medium text-blue-600 hover:text-blue-700 hover:underline" @click.prevent="openResetModal">忘记密码？</a>
+      </div>
+
       <div v-if="!isLogin" class="fld">
         <div class="inp">
           <span class="inp-ico">
-            <svg viewBox="0 0 24 24" class="h-4.5 w-4.5 fill-current">
-              <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-            </svg>
+            <img src="/qiamizhifu.svg" alt="卡密" class="h-5 w-5 object-contain" />
           </span>
-          <input v-model="cardCode" type="text" placeholder="卡密">
+          <input v-model="cardCode" type="text" placeholder="请输入卡密">
         </div>
         <button v-if="cardClaimEnabled" type="button" class="gift" :disabled="cardClaimLoading" @click="claimFreeCard">
           <span v-if="cardClaimLoading" class="i-svg-spinners-90-ring-with-bg text-xs" /><span v-else>🎁 免费领取卡密</span>
@@ -221,17 +228,18 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
       <div v-if="success" class="nt nt-ok"><span class="i-carbon-checkmark-outline" />{{ success }}</div>
       
       <button type="submit" class="btn" :disabled="loading">
-        <span v-if="loading" class="i-svg-spinners-90-ring-with-bg" /><span v-else>{{ isLogin ? '登 录' : '注 册' }}</span>
+        <span v-if="loading" class="i-svg-spinners-90-ring-with-bg" />
+        <template v-else>
+          <img v-if="!isLogin" src="/zhuce.svg" alt="注册" class="h-5 w-5 object-contain brightness-0 invert" />
+          <span v-else class="btn-icon i-carbon-login" />
+          <span>{{ isLogin ? '登 录' : '注 册' }}</span>
+        </template>
       </button>
     </form>
 
     <p class="ft">
       <span>{{ isLogin ? '还没有账号？' : '已有账号？' }}</span>
       <a href="#" @click.prevent="toggleMode">{{ isLogin ? '立即注册' : '立即登录' }}</a>
-      <template v-if="isLogin">
-        <span class="ft-div">·</span><a href="#" @click.prevent="openResetModal">忘记密码</a>
-        <span class="ft-div">·</span><a href="#" @click.prevent="goToRenewal">账号续费</a>
-      </template>
     </p>
     <div class="ver">
       <code v-if="gameVersion">游戏：{{ gameVersion }}</code>
@@ -335,7 +343,6 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     inset 0 1.5px 2px rgba(255, 255, 255, 0.95),
     0 24px 60px rgba(15, 23, 42, 0.16),
     0 4px 16px rgba(0, 0, 0, 0.08);
-  /* 完全静止稳定，不浮动 */
 }
 
 @keyframes cardFloat {
@@ -426,28 +433,37 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
 
 .inp-ico {
   position: absolute;
-  left: 10px;
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.12);
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
+  left: 16px;
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.25s;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 2px 6px rgba(37, 99, 235, 0.15);
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.inp-ico img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  filter: brightness(0) !important;
+  opacity: 1 !important;
 }
 
 .inp input {
   width: 100%;
   height: 50px;
   padding: 0 16px 0 46px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255, 255, 255, 0.8);
-  border-radius: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
   font-size: 0.92rem;
   font-weight: 500;
   color: #1e293b;
@@ -467,7 +483,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
     0 8px 24px rgba(59, 130, 246, 0.12);
 }
 
-.inp:focus-within .inp-ico { color: #ffffff; background: linear-gradient(135deg, #3b82f6, #2563eb);  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
+
 
 .input-hint { font-size: 0.74rem; color: #ef4444; padding-left: 6px; font-weight: 500; }
 
@@ -483,36 +499,63 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
 .nt-err { background: rgba(254, 242, 242, 0.85); color: #991b1b; border: 1px solid rgba(254, 202, 202, 0.9); }
 .nt-ok { background: rgba(239, 246, 255, 0.85); color: #1e40af; border: 1px solid rgba(191, 219, 254, 0.9); }
 
-/* 液态玻璃主提交按钮 */
+/* 极光微光圆弧胶囊主提交按钮 (青绿到天蓝高光渐变) */
 .btn {
   width: 100%;
-  height: 50px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
-  color: #fff;
-  border-radius: 16px;
-  font-size: 0.96rem;
+  height: 52px;
+  background: linear-gradient(120deg, #10b981 0%, #06b6d4 25%, #3b82f6 50%, #06b6d4 75%, #10b981 100%);
+  background-size: 250% 100%;
+  animation: aurora-flow 4s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  color: #ffffff;
+  border-radius: 9999px;
+  font-size: 1.02rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  letter-spacing: 0.12em;
-  margin-top: 6px;
-  backdrop-filter: blur(8px);
+  gap: 9px;
+  letter-spacing: 0.1em;
+  margin-top: 10px;
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.8),
-    0 10px 28px rgba(37, 99, 235, 0.35);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.08),
+    0 10px 28px -4px rgba(14, 165, 233, 0.45),
+    0 4px 14px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes aurora-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.btn .btn-icon {
+  font-size: 1.25rem;
+  transition: transform 0.25s ease;
 }
 
 .btn:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.01);
   box-shadow:
-    inset 0 1px 2.5px rgba(255, 255, 255, 0.95),
-    0 14px 34px rgba(37, 99, 235, 0.45);
-  filter: brightness(1.06);
+    inset 0 2px 3px rgba(255, 255, 255, 0.9),
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.06),
+    0 14px 30px -4px rgba(14, 165, 233, 0.55),
+    0 6px 16px rgba(16, 185, 129, 0.35);
+  filter: brightness(1.05);
+}
+
+.btn:hover:not(:disabled) .btn-icon {
+  transform: translateX(3px);
 }
 
 .btn:active:not(:disabled) { transform: scale(0.98); }
@@ -528,7 +571,7 @@ async function fetchGameVersion() { try { const r = await api.get('/api/game-ver
 .ver code { font-size: 0.7rem; color: #64748b; font-weight: 600; font-family: monospace; padding: 3px 12px; background: rgba(255, 255, 255, 0.5); border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 99px; }
 
 /* 模态弹窗 */
-.md-bg { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(14px); padding: 24px; }
+.md-bg { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.4);  padding: 24px; }
 .md-box { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(24px); border: 1.5px solid rgba(255, 255, 255, 0.9); border-radius: 24px; padding: 36px 32px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.9); }
 .md-ico { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 18px; margin-bottom: 18px; border: 1px solid rgba(255, 255, 255, 0.8); }
 .md-ok { background: rgba(219, 234, 254, 0.8); color: #2563eb; }
