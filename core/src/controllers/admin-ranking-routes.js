@@ -264,7 +264,8 @@ function registerAdminRankingRoutes({ app, store, provider }) {
         return Number(b.level || 0) - Number(a.level || 0);
       });
 
-      const rankedList = qualified.map((item, index) => ({
+      // 为减少服务器压力与网络开销，排行榜仅展示前 15 名
+      const rankedList = qualified.slice(0, 15).map((item, index) => ({
         rank: index + 1,
         ...item,
       }));
