@@ -67,6 +67,10 @@ pnpm dev:core
 
 看到服务启动后，打开 <http://localhost:3007>，你的农场控制室就准备好了。
 
+> 🔑 **默认管理员账号**：`admin`  
+> 🔑 **默认初始密码**：`admin`  
+> *(首次登录后，可在左侧边栏底部点击钥匙图标修改密码)*
+
 想继续装修控制室？可以另外启动前端开发服务器：
 
 ```bash
@@ -75,10 +79,35 @@ pnpm dev:web
 
 ## 🐳 Docker 部署
 
+> 🔑 **默认管理员账号**：`admin`  
+> 🔑 **默认初始密码**：`admin`
+
+### 方式 A：基础轻量部署（推荐，支持微信扫码、抓包登录与手动填码）
+
+适合绝大多数服务器与轻量 VPS，内存开销极低：
+
 ```bash
 git clone https://github.com/aaang99/qq-farm-bot-404.git
 cd qq-farm-bot-404
 docker compose up -d --build
+```
+
+### 方式 B：全功能部署（包含 QQ 扫码登录服务）
+
+如果需要使用 QQ 扫码登录，请使用项目专属启动脚本：
+
+```bash
+git clone https://github.com/aaang99/qq-farm-bot-404.git
+cd qq-farm-bot-404
+
+# 开启 QQ 扫码配置
+cp .env.compose.example .env
+# 确保 .env 内包含：
+# COMPOSE_PROFILES=napcat
+# NAPCAT_LOGIN_ENABLED=true
+
+# 使用内置脚本一键启动农场与 NapCat 服务
+./compose.sh up -d --build
 ```
 
 查看运行状态和日志：
