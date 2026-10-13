@@ -454,7 +454,7 @@ onMounted(async () => {
           @apply-default-plan="requestDefaultPlanConfirmation('apply', $event)"
           @edit="openEditModal"
           @delete="handleDelete"
-          @saved="handleSaved"
+          @saved="(id) => handleSaved(id)"
           @close-modal="showModal = false"
           @close-delete-confirm="showDeleteConfirm = false"
           @confirm-delete="confirmDelete"

@@ -27,11 +27,19 @@ function registerAdminPetRoutes({ app, provider, store, getAccountIdFromRequest,
     const autoCfg = store.getAutomation ? store.getAutomation(id) : {};
     if (body.autoBuyFood !== undefined) {
       autoCfg.auto_buy_dog_food = body.autoBuyFood === true;
+      if (typeof store.setAutomation === 'function') {
+        store.setAutomation('auto_buy_dog_food', autoCfg.auto_buy_dog_food, id);
+      }
     }
     if (body.autoFeedDog !== undefined) {
       autoCfg.auto_feed_dog = body.autoFeedDog === true;
+      if (typeof store.setAutomation === 'function') {
+        store.setAutomation('auto_feed_dog', autoCfg.auto_feed_dog, id);
+      }
     }
-    store.setAutomation(id, autoCfg);
+    if (provider && typeof provider.broadcastConfig === 'function') {
+      provider.broadcastConfig(id);
+    }
     return { ok: true, autoBuyFood: autoCfg.auto_buy_dog_food, autoFeedDog: autoCfg.auto_feed_dog };
   });
   route('post', '/api/dog/activate', (id, body) => provider.activateDog(id, Number(body.dogId)));

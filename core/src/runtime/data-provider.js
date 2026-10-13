@@ -372,9 +372,43 @@ function createDataProvider(deps) {
                 delete acc.loginBuffer;
                 delete acc.refreshtoken;
                 delete acc.accesstoken;
-                if (worker && worker.status && worker.status.status && worker.status.status.name) {
-                    acc.nick = worker.status.status.name;
+
+                let liveLevel = null;
+                let liveNick = null;
+                let liveTasks = null;
+
+                if (worker && worker.status) {
+                    if (worker.status.status) {
+                        liveLevel = worker.status.status.level;
+                        liveNick = worker.status.status.name || worker.status.status.nick;
+                    }
+                    if (worker.status.dailyGifts && worker.status.dailyGifts.gifts) {
+                        liveTasks = worker.status.dailyGifts.gifts;
+                    }
                 }
+
+                // 尝试从持久化 stats 补全真实等级（离线时也能正常显示等级）
+                if (liveLevel === null || liveLevel === undefined) {
+                    try {
+                        const path = require('node:path');
+                        const fs = require('node:fs');
+                        const baseDir = process.env.FARM_DATA_DIR || path.join(__dirname, '../../data');
+                        const statsFile = path.join(baseDir, 'stats', `${acc.id}.json`);
+                        if (fs.existsSync(statsFile)) {
+                            const stat = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+                            if (stat && stat.profile && stat.profile.level) {
+                                liveLevel = stat.profile.level;
+                            }
+                            if (stat && stat.profile && stat.profile.name && !acc.nick) {
+                                liveNick = stat.profile.name;
+                            }
+                        }
+                    } catch {}
+                }
+
+                if (liveNick) acc.nick = liveNick;
+                if (liveLevel !== null && liveLevel !== undefined) acc.level = Number(liveLevel);
+                if (liveTasks) acc.tasks = liveTasks;
             });
             return data;
         },

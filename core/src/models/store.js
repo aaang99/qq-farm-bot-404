@@ -294,6 +294,8 @@ const DEFAULT_AUTOMATION = {
     // markStories（纯 UI 状态无奖励）、skipBattle（是设置项不是任务）。
     pet_diary_adopt: false,
     pet_diary_feed: false,
+    auto_buy_dog_food: false,
+    auto_feed_dog: false,
     pet_diary_draw: false,
     pet_diary_story_claim: false,
     pet_diary_seed_claim: false,

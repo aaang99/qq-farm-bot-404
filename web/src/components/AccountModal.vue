@@ -13,7 +13,7 @@ const props = defineProps<{
   editData?: any
 }>()
 
-const emit = defineEmits(['close', 'saved'])
+const emit = defineEmits<{(e: 'close'): void; (e: 'saved', targetId?: string): void}>()
 
 const CODE_QUERY_RE = /[?&]code=([^&]+)/i
 const QR_AUTO_REFRESH_MS = 110_000
@@ -327,8 +327,9 @@ async function completeCaptureAccount() {
       throw new Error(data?.error || (props.editData ? '更新账号失败' : '添加账号失败'))
     localStorage.setItem(CAPTURE_SUCCESS_STORAGE_KEY, '1')
     stopCaptureCheck()
+    const capTargetId = String(data?.data?.accountId || data?.targetAccountId || '')
     captureFlow.value = null
-    emit('saved')
+    emit('saved', capTargetId)
     close()
   }
   catch (e: any) {
@@ -408,7 +409,8 @@ async function addAccount(data: any) {
   try {
     const res = await api.post('/api/accounts', data)
     if (res.data.ok) {
-      emit('saved')
+      const targetId = String(res.data.targetAccountId || (res.data.data?.accounts?.length ? res.data.data.accounts[res.data.data.accounts.length - 1].id : ''))
+      emit('saved', targetId)
       close()
     }
     else {

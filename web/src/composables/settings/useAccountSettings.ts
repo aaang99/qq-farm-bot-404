@@ -140,8 +140,18 @@ export function useAccountSettings(showAlert: (message: string, type?: AlertType
     }
   }
 
-  function handleSaved() {
-    accountStore.fetchAccounts()
+  async function handleSaved(targetId?: string) {
+    await accountStore.fetchAccounts()
+    if (targetId && accountStore.accounts.length > 0) {
+      const target = accountStore.accounts.find(a => String(a.id) === String(targetId))
+      if (target) {
+        accountStore.setCurrentAccount(target)
+      } else {
+        accountStore.setCurrentAccount(accountStore.accounts[accountStore.accounts.length - 1])
+      }
+    } else if (accountStore.accounts.length > 0) {
+      accountStore.setCurrentAccount(accountStore.accounts[accountStore.accounts.length - 1])
+    }
   }
 
   function selectAccount(account: any) {

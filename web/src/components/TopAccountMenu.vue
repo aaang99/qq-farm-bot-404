@@ -232,8 +232,19 @@ function openRemarkModal(acc: any) {
   closeDropdown()
 }
 
-async function handleAccountSaved() {
+async function handleAccountSaved(targetId?: string) {
   await accountStore.fetchAccounts()
+  if (targetId && accountStore.accounts.length > 0) {
+    const target = accountStore.accounts.find((a: any) => String(a.id) === String(targetId))
+    if (target) {
+      accountStore.setCurrentAccount(target)
+    } else {
+      accountStore.setCurrentAccount(accountStore.accounts[accountStore.accounts.length - 1])
+    }
+  } else if (accountStore.accounts.length > 0 && !accountToEdit.value) {
+    // 新增账号若未带 targetId，默认对焦最后一个
+    accountStore.setCurrentAccount(accountStore.accounts[accountStore.accounts.length - 1])
+  }
   showAccountModal.value = false
   showRemarkModal.value = false
   accountToEdit.value = null

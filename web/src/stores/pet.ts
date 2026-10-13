@@ -63,10 +63,11 @@ export const usePetStore = defineStore('pet', () => {
     if (!accountId) return
     const { data } = await api.post('/api/dog/auto-config', payload, { headers: headers(accountId) })
     if (data?.ok) {
+      const resp = data.data || data
       overview.value = {
         ...overview.value,
-        autoBuyFood: data.autoBuyFood,
-        autoFeedDog: data.autoFeedDog,
+        ...(resp.autoBuyFood !== undefined ? { autoBuyFood: resp.autoBuyFood === true } : {}),
+        ...(resp.autoFeedDog !== undefined ? { autoFeedDog: resp.autoFeedDog === true } : {}),
       }
     }
     return data

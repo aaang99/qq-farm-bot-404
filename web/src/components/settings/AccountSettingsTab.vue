@@ -78,11 +78,11 @@ function getAccountLevel(acc: any) {
   if (String(acc.id) === String(props.currentAccountId) && status.value?.status?.level !== undefined) {
     return status.value.status.level
   }
-  return acc.level ?? acc.status?.level ?? 0
+  return acc.level ?? acc.status?.level ?? 1
 }
 
 function getAccountTaskSummary(acc: any) {
-  const gifts = (String(acc.id) === String(props.currentAccountId) ? dailyGifts.value?.gifts : null) || []
+  const gifts = (String(acc.id) === String(props.currentAccountId) ? dailyGifts.value?.gifts : acc.tasks) || acc.tasks || []
   if (!gifts.length) return { done: 0, total: 6 }
   const done = gifts.filter((g: any) => g.doneToday).length
   return { done, total: gifts.length }
@@ -135,7 +135,7 @@ const emit = defineEmits<{
   applyDefaultPlan: [account: any]
   edit: [account: any]
   delete: [account: any]
-  saved: []
+  saved: [targetId?: string]
   closeModal: []
   closeDeleteConfirm: []
   confirmDelete: []
@@ -395,7 +395,7 @@ function accountAvatar(acc: any) {
       :show="showModal"
       :edit-data="editingAccount"
       @close="emit('closeModal')"
-      @saved="emit('saved')"
+      @saved="(id) => emit('saved', id)"
     />
 
     <ConfirmModal
