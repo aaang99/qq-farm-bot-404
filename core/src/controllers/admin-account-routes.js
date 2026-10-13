@@ -480,16 +480,22 @@ function registerAdminAccountRoutes({
       const data = addOrUpdateAccount(nextAccount);
       const clientVersionUpdated = syncGatewayClientVersion(gateway, store, updateRuntimeConfig);
 
-      // 如果来自 NapCat 扫码附带的好友列表，缓存并记录日志
+      // 如果来自 NapCat 扫码附带的好友列表，立即写入账号配置并在后台自动同步
       if (Array.isArray(body.qqFriends) && body.qqFriends.length > 0) {
         const targetAccId = effectiveIsUpdate ? String(nextAccount.id) : String((data.accounts.at(-1) || {}).id || "");
-        if (targetAccId && store && typeof store.updateAccountConfig === 'function') {
-          store.updateAccountConfig(targetAccId, { pendingQqFriends: body.qqFriends });
+        if (targetAccId) {
+          try {
+            const currentCfg = store.getAccountConfigSnapshot ? store.getAccountConfigSnapshot(targetAccId) : {};
+            currentCfg.pendingQqFriends = body.qqFriends;
+            if (typeof store.setAccountConfigSnapshot === 'function') {
+              store.setAccountConfigSnapshot(targetAccId, currentCfg, true);
+            }
+          } catch (cfgErr) {}
         }
         if (provider.addAccountLog) {
           provider.addAccountLog(
             "friend_sync",
-            `从 QQ 扫码中捕获到 ${body.qqFriends.length} 个 QQ 好友，将在登录后自动同步至农场`,
+            `从 QQ 扫码中成功捕获 ${body.qqFriends.length} 位 QQ 关系链好友，正在自动同步至农场好友系统`,
             targetAccId,
             nextAccount.name || targetAccId,
           );

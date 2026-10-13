@@ -76,52 +76,6 @@ export async function plugin_init(ctx) {
     const service = misc(ctx);
     res.json({ ok: true, ready: Boolean(service), ...selfProfile(ctx), methods: ['checkSessionForMiniApp', 'loginWithAppId', 'getOpenCodeWithAppId', 'getOpenAuth'].filter(name => typeof service?.[name] === 'function') });
   });
-
-  // 获取 QQ 好友关系链 (通过 NTQQ BuddyService)
-  ctx.router.getNoAuth('/friends', async (req, res) => {
-    if (!authorized(req, res, token)) return;
-    try {
-      const buddyService = ctx?.core?.context?.session?.getBuddyService?.();
-      if (!buddyService) {
-        return res.json({ ok: true, friends: [], count: 0, note: 'BuddyService unavailable' });
-      }
-
-      let uids = [];
-      try {
-        const rawList = typeof buddyService.getBuddyListV2 === 'function'
-          ? await buddyService.getBuddyListV2("0", true, 1)
-          : null;
-        if (rawList && Array.isArray(rawList.data)) {
-          uids = rawList.data.flatMap(cat => Array.isArray(cat?.buddyUids) ? cat.buddyUids : []);
-        }
-      } catch (e) {
-        // 兼容普通分类或降级
-      }
-
-      let friends = [];
-      if (uids.length > 0 && ctx?.core?.eventWrapper?.callNoListenerEvent) {
-        try {
-          const profileMap = await ctx.core.eventWrapper.callNoListenerEvent(
-            "NodeIKernelProfileService/getCoreAndBaseInfo",
-            "nodeStore",
-            uids
-          );
-          if (profileMap && typeof profileMap === 'object') {
-            for (const item of Object.values(profileMap)) {
-              const uin = String(item?.uin || item?.user_id || '').trim();
-              const nick = String(item?.nick || item?.nickName || item?.remark || '').trim();
-              if (uin) friends.push({ uin, nick });
-            }
-          }
-        } catch (e) {}
-      }
-
-      res.json({ ok: true, friends, count: friends.length });
-    } catch (error) {
-      res.status(500).json({ ok: false, error: error?.message || String(error) });
-    }
-  });
-
   ctx.router.postNoAuth('/miniapp', async (req, res) => {
     if (!authorized(req, res, token)) return;
     const appId = String(req.body?.appId || '');
@@ -140,7 +94,6 @@ export async function plugin_init(ctx) {
     }
     res.status(502).json({ ok: false, error: 'QQNT OpenAuth methods returned no authorization code', attempts });
   });
-
   ctx.router.postNoAuth('/logout', async (req, res) => {
     if (!authorized(req, res, token)) return;
     const service = loginService(ctx);

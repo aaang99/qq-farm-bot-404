@@ -481,7 +481,8 @@ const DEFAULT_ACCOUNT_CONFIG = {
     autoAcceptFriendMinLevel: 0,
     goldenBugKeepCount: 0,
     goldenBugRoundLimit: 24,
-    capitalMode: DEFAULT_CAPITAL_MODE
+    capitalMode: DEFAULT_CAPITAL_MODE,
+    pendingQqFriends: []
 };
 
 const ALLOWED_AUTOMATION_KEYS = new Set(Object.keys(DEFAULT_ACCOUNT_CONFIG.automation));
@@ -716,7 +717,8 @@ function cloneAccountConfig(config = DEFAULT_ACCOUNT_CONFIG) {
         bagSeedPriority: normalizeBagSeedPriority(config.bagSeedPriority),
         bagSeedKnownIds: normalizeBagSeedPriority(config.bagSeedKnownIds),
         bagSeedFallbackStrategy: normalizeBagSeedFallbackStrategy(config.bagSeedFallbackStrategy),
-        capitalMode: normalizeCapitalMode(config.capitalMode)
+        capitalMode: normalizeCapitalMode(config.capitalMode),
+        pendingQqFriends: Array.isArray(config.pendingQqFriends) ? config.pendingQqFriends : []
     };
 }
 

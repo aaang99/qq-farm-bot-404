@@ -56,6 +56,7 @@ const qqQrImage = ref('')
 const qqStatus = ref('点击获取二维码')
 const qqError = ref('')
 const qqLoading = ref(false)
+const qqExtracting = ref(false)
 const qqQrCreatedAt = ref(0)
 const captureEnabled = ref(false)
 const captureLoading = ref(false)
@@ -210,7 +211,7 @@ const { pause: stopQqCheck, resume: startQqCheck } = useIntervalFn(async () => {
       if (!result.data?.ok || !result.data.data?.code)
         throw new Error(result.data?.error || '获取农场 Code 失败')
       qqTaskId.value = ''
-      await addAccount({ id: props.editData?.id, name: props.editData?.name || qqAccountName.value.trim() || result.data.data.nickname || `QQ账号${result.data.data.uin || Date.now()}`, code: result.data.data.code, platform: 'qq', loginType: 'qq_napcat', qq: result.data.data.uin || '', uin: result.data.data.uin || '', qqFriends: result.data.data.qqFriends || [], startAfterSave: true })
+      await addAccount({ id: props.editData?.id, name: props.editData?.name || qqAccountName.value.trim() || result.data.data.nickname || `QQ账号${result.data.data.uin || Date.now()}`, code: result.data.data.code, platform: 'qq', loginType: 'qq_napcat', qq: result.data.data.uin || '', uin: result.data.data.uin || '', startAfterSave: true })
     }
   }
   catch (e: any) {
