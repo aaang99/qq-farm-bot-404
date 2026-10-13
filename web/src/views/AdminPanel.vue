@@ -1231,8 +1231,12 @@ onUnmounted(() => {
                           {{ !card.enabled ? '已禁用' : (card.usedBy ? '已使用' : '待使用') }}
                         </span>
                       </td>
-                      <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-500 dark:text-gray-400">
-                        {{ card.usedBy || '-' }}
+                      <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-700 dark:text-gray-300">
+                        <template v-if="card.usedBy">
+                          <span class="font-medium">{{ card.usedBy }}</span>
+                          <span class="text-gray-400 text-[11px] font-mono ml-1">（{{ card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-' }}）</span>
+                        </template>
+                        <span v-else class="text-gray-400">-</span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-400 font-mono">
                         {{ card.createdAt ? new Date(card.createdAt).toLocaleDateString() : '-' }}
@@ -1331,8 +1335,13 @@ onUnmounted(() => {
                   </div>
                   <div class="flex flex-col">
                     <span class="text-gray-400">使用人</span>
-                    <span class="font-medium text-gray-700 dark:text-gray-300 mt-0.5 truncate">
-                      {{ card.usedBy || '暂未使用' }}
+                    <span class="font-medium text-gray-700 dark:text-gray-300 mt-0.5 truncate" :title="card.usedBy ? `${card.usedBy}（${card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-'}）` : '暂未使用'">
+                      <template v-if="card.usedBy">
+                        {{ card.usedBy }}<span class="text-gray-400 text-[11px] font-mono font-normal">（{{ card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-' }}）</span>
+                      </template>
+                      <template v-else>
+                        暂未使用
+                      </template>
                     </span>
                   </div>
                 </div>

@@ -314,6 +314,7 @@ function registerAdminAccountRoutes({
     try {
       const rawBody = req.body && typeof req.body === "object" ? req.body : {};
       const body = stripProtectedWxCredentials(rawBody);
+      let effectiveIsUpdate = !!body.id;
       const gateway = parseOfficialGatewayUrl(body.gatewayUrl);
       if (body.gatewayUrl && !gateway) {
         return res.status(400).json({ ok: false, error: "WebSocket URL 无效或缺少有效的 code/ver" });
@@ -372,7 +373,7 @@ function registerAdminAccountRoutes({
       }
 
       // wxid 换绑后旧账号凭据绝不能继续使用；只有新的扫码会话可以重新写入。
-      if (isUpdate) {
+      if (effectiveIsUpdate) {
         const existing = getAccountsForUser().find(
           (account) => String(account.id) === String(nextAccount.id),
         );
@@ -389,12 +390,12 @@ function registerAdminAccountRoutes({
       }
 
       let wasRunning = false;
-      if (isUpdate && provider.isAccountRunning) {
+      if (effectiveIsUpdate && provider.isAccountRunning) {
         wasRunning = provider.isAccountRunning(nextAccount.id);
       }
 
       let onlyRenaming = false;
-      if (isUpdate) {
+      if (effectiveIsUpdate) {
         const accounts = provider.getAccounts();
         const existing = accounts.accounts.find(
           (account) => account.id === nextAccount.id,
@@ -406,7 +407,7 @@ function registerAdminAccountRoutes({
         }
       }
 
-      if (isUpdate) {
+      if (effectiveIsUpdate) {
         const existing = getAccountsForUser().find(
           (account) => String(account.id) === String(nextAccount.id),
         );
@@ -417,61 +418,55 @@ function registerAdminAccountRoutes({
         nextAccount.username = currentUser.username;
       }
 
-      // ============ 跨账号冲突检测与自动排他清理 ============
-      // 如果新添加的农场账号已存在于某个老用户下，按新数据从0开始：停止并彻底删除老账号及其旧数据
+      // ============ 智能检索与排他去重：自动识别更新账号 / 清理老用户冲突 ============
+      let matchedExistingId = '';
       if (!isUpdate && (nextAccount.uin || nextAccount.wxid || nextAccount.openId)) {
         try {
           const currentOwner = currentUser ? currentUser.username : (nextAccount.username || 'admin');
           const allExistingAccounts = getAccountsForUser();
-          const conflictingAccounts = allExistingAccounts.filter(existing => {
-            if (String(existing.username || '') === String(currentOwner)) return false; // 同一用户更新不视为跨用户冲突
-            
-            // QQ 账号按 uin 比对
-            if (nextAccount.uin && existing.uin && String(existing.uin) === String(nextAccount.uin)) {
-              return true;
-            }
-            // 微信账号按 wxid 或 openId 比对
-            if (nextAccount.wxid && existing.wxid && String(existing.wxid) === String(nextAccount.wxid)) {
-              return true;
-            }
-            if (nextAccount.openId && existing.openId && String(existing.openId) === String(nextAccount.openId)) {
-              return true;
-            }
-            return false;
-          });
 
-          for (const conflict of conflictingAccounts) {
-            const conflictId = String(conflict.id);
-            // 1. 立即停止老挂机 Worker，杜绝互踢和抢登
-            if (provider && typeof provider.isAccountRunning === 'function' && provider.isAccountRunning(conflictId)) {
-              if (typeof provider.stopAccount === 'function') {
-                provider.stopAccount(conflictId);
+          for (const existing of allExistingAccounts) {
+            const isSameQq = Boolean(nextAccount.uin && existing.uin && String(existing.uin) === String(nextAccount.uin));
+            const isSameWx = Boolean((nextAccount.wxid && existing.wxid && String(existing.wxid) === String(nextAccount.wxid))
+              || (nextAccount.openId && existing.openId && String(existing.openId) === String(nextAccount.openId)));
+
+            if (isSameQq || isSameWx) {
+              const existingOwner = String(existing.username || '');
+              if (existingOwner === String(currentOwner)) {
+                // 【核心改进 1】：当前用户自己已存在该农场账号 -> 自动识别为“更新账号”，复用原 ID，绝不重复生成新卡片！
+                matchedExistingId = String(existing.id);
+                nextAccount.id = matchedExistingId;
+                if (!nextAccount.name || nextAccount.name.startsWith('QQ账号') || nextAccount.name.startsWith('微信账号')) {
+                  nextAccount.name = existing.name || nextAccount.name;
+                }
+                break;
+              } else {
+                // 【核心改进 2】：属于其他老用户的账号 -> 自动停止并彻底删除老用户的该账号，由新用户从 0 开始接管！
+                const conflictId = String(existing.id);
+                if (provider && typeof provider.isAccountRunning === 'function' && provider.isAccountRunning(conflictId)) {
+                  if (typeof provider.stopAccount === 'function') provider.stopAccount(conflictId);
+                }
+                if (typeof deleteAccount === 'function') deleteAccount(conflictId);
+
+                try {
+                  const baseDir = process.env.FARM_DATA_DIR || path.join(__dirname, '../../../data');
+                  const oldStatsFile = path.join(baseDir, 'stats', `${conflictId}.json`);
+                  const oldHistoryFile = path.join(baseDir, 'stats', `history_${conflictId}.json`);
+                  const oldCareerFile = path.join(baseDir, 'stats', `career_${conflictId}.json`);
+                  if (fs.existsSync(oldStatsFile)) fs.unlinkSync(oldStatsFile);
+                  if (fs.existsSync(oldHistoryFile)) fs.unlinkSync(oldHistoryFile);
+                  if (fs.existsSync(oldCareerFile)) fs.unlinkSync(oldCareerFile);
+                } catch (fileErr) {}
+
+                if (provider.addAccountLog) {
+                  provider.addAccountLog(
+                    'account_conflict_replaced',
+                    `农场账号【${existing.name || conflictId}】已从老用户【${existing.username}】迁移至新用户【${currentOwner}】，已自动清理老用户旧数据与历史战绩`,
+                    conflictId,
+                    existing.name || conflictId
+                  );
+                }
               }
-            }
-
-            // 2. 彻底删除老用户的农场账号配置与旧缓存
-            if (typeof deleteAccount === 'function') {
-              deleteAccount(conflictId);
-            }
-
-            // 3. 彻底清除旧账号的历史战绩与收益文件（确保新账号从 0 开始，排行榜不继承旧收益）
-            try {
-              const baseDir = process.env.FARM_DATA_DIR || path.join(__dirname, '../../../data');
-              const oldStatsFile = path.join(baseDir, 'stats', `${conflictId}.json`);
-              const oldHistoryFile = path.join(baseDir, 'stats', `history_${conflictId}.json`);
-              const oldCareerFile = path.join(baseDir, 'stats', `career_${conflictId}.json`);
-              if (fs.existsSync(oldStatsFile)) fs.unlinkSync(oldStatsFile);
-              if (fs.existsSync(oldHistoryFile)) fs.unlinkSync(oldHistoryFile);
-              if (fs.existsSync(oldCareerFile)) fs.unlinkSync(oldCareerFile);
-            } catch (fileErr) {}
-
-            if (provider.addAccountLog) {
-              provider.addAccountLog(
-                'account_conflict_replaced',
-                `农场账号【${conflict.name || conflictId}】已从老用户【${conflict.username}】迁移至新用户【${currentOwner}】，已自动清理老用户旧数据与历史战绩`,
-                conflictId,
-                conflict.name || conflictId
-              );
             }
           }
         } catch (conflictErr) {
@@ -479,12 +474,15 @@ function registerAdminAccountRoutes({
         }
       }
 
+      // 如果自动识别为更新已存在账号，同步切换为 update 模式
+      effectiveIsUpdate = isUpdate || Boolean(matchedExistingId);
+
       const data = addOrUpdateAccount(nextAccount);
       const clientVersionUpdated = syncGatewayClientVersion(gateway, store, updateRuntimeConfig);
 
       // 如果来自 NapCat 扫码附带的好友列表，缓存并记录日志
       if (Array.isArray(body.qqFriends) && body.qqFriends.length > 0) {
-        const targetAccId = isUpdate ? String(nextAccount.id) : String((data.accounts.at(-1) || {}).id || "");
+        const targetAccId = effectiveIsUpdate ? String(nextAccount.id) : String((data.accounts.at(-1) || {}).id || "");
         if (targetAccId && store && typeof store.updateAccountConfig === 'function') {
           store.updateAccountConfig(targetAccId, { pendingQqFriends: body.qqFriends });
         }
@@ -502,7 +500,7 @@ function registerAdminAccountRoutes({
         wxLoginAdapter.consumePendingWxInfo(body.wxSessionId, body.wxid, currentUser.username);
       }
       if (provider.addAccountLog) {
-        const accountId = isUpdate
+        const accountId = effectiveIsUpdate
           ? String(nextAccount.id)
           : String((data.accounts.at(-1) || {}).id || "");
         const name = nextAccount.name || "";
@@ -516,7 +514,7 @@ function registerAdminAccountRoutes({
 
       let autoRefreshEnabled = false;
       let startQueued = false;
-      if (!isUpdate) {
+      if (!effectiveIsUpdate) {
         const created = data.accounts.at(-1);
         if (created) {
           const isNativeWxScan = created.platform === "wx"
@@ -543,17 +541,19 @@ function registerAdminAccountRoutes({
             }
           });
         }
-      } else if (!onlyRenaming && (wasRunning || startAfterSave)) {
+      } else if (!onlyRenaming) {
+        // 用户明确要求：只要更新了账号凭据（包括手动填码、扫码、抓包），统统自动登录上线！
         startQueued = true;
+        const targetId = String(nextAccount.id);
         const startOperation = wasRunning
-          ? provider.restartAccount(nextAccount.id)
-          : provider.startAccount(nextAccount.id);
+          ? provider.restartAccount(targetId)
+          : provider.startAccount(targetId);
         Promise.resolve(startOperation).catch((error) => {
           if (provider.addAccountLog) {
             provider.addAccountLog(
               "start_failed",
-              `账号 ${nextAccount.name || nextAccount.id} 后台启动失败: ${error.message || error}`,
-              nextAccount.id,
+              `账号 ${nextAccount.name || targetId} 自动登录失败: ${error.message || error}`,
+              targetId,
               nextAccount.name || "",
             );
           }
@@ -726,7 +726,8 @@ function registerAdminAccountRoutes({
             : [],
         });
       }
-      res.json({ ok: true, data });
+      const finalTargetId = effectiveIsUpdate ? String(nextAccount.id) : String((data.accounts.at(-1) || {}).id || '');
+      res.json({ ok: true, data, targetAccountId: finalTargetId });
     } catch (error) {
       sendProviderError(res, error);
     }

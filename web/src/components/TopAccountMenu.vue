@@ -289,16 +289,16 @@ async function handleAccountSaved() {
 
       <div
         v-if="showAccountDropdown"
-        class="liquid-dropdown-menu fixed z-[9999] overflow-hidden rounded-2xl py-2 shadow-2xl backdrop-blur-2xl"
+        class="liquid-dropdown-menu fixed z-[9999] overflow-hidden rounded-2xl py-2 shadow-2xl bg-white/95 dark:bg-gray-800/95 border border-gray-100 dark:border-gray-700/80 backdrop-blur-xl"
         :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px`, width: `${dropdownPos.width}px` }"
       >
-        <div class="custom-scrollbar max-h-72 overflow-y-auto px-1.5 space-y-1">
+        <div class="custom-scrollbar max-h-72 overflow-y-auto px-1.5 divide-y divide-gray-100/90 dark:divide-gray-700/60">
           <template v-if="accounts.length > 0">
             <button
               v-for="acc in accounts"
               :key="acc.id || acc.uin"
-              class="liquid-account-row w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-all"
-              :class="{ 'liquid-account-row-active': currentAccount?.id === acc.id }"
+              class="liquid-account-row w-full flex items-center gap-2.5 px-2.5 py-2.5 transition-all text-left hover:bg-gray-50/80 dark:hover:bg-gray-700/40 first:rounded-t-xl last:rounded-b-xl"
+              :class="{ 'bg-blue-50/70 dark:bg-blue-950/40': currentAccount?.id === acc.id }"
               @click="selectAccount(acc)"
             >
               <div class="h-8 w-8 flex shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-white/60 shadow-sm bg-white/50">
@@ -342,7 +342,7 @@ async function handleAccountSaved() {
             暂无账号
           </div>
         </div>
-        <div class="mt-2 border-t border-white/40 pt-1.5 px-1.5 flex gap-1 dark:border-white/10">
+        <div class="mt-1 border-t border-gray-100 pt-2 px-1.5 flex gap-1.5 dark:border-gray-700/60">
           <button
             class="liquid-btn-action flex-1 flex items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-bold text-blue-600 transition-colors"
             @click="openAddAccount"

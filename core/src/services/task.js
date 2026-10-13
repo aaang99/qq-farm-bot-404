@@ -1,3 +1,87 @@
+
+/**
+ * 自动检测并完成成长任务中的【购买种子】任务（不做种植，只做购买）
+ */
+async function checkAndExecuteGrowthBuySeedTasks() {
+  if (!isAutomationOn('task') || !isConnected()) return;
+
+  try {
+    const reply = await getTaskInfo();
+    const taskInfo = reply && reply.task_info ? reply.task_info : {};
+    const growthTasks = buildGrowthTasks(taskInfo);
+
+    // 寻找未完成、已解锁且未领取的成长任务
+    for (const t of growthTasks) {
+      if (!t.is_unlocked || t.is_claimed) continue;
+      const progress = Math.max(0, toNum(t.progress));
+      const total = Math.max(0, toNum(t.total_progress));
+      if (total <= 0 || progress >= total) continue;
+
+      const desc = String(t.desc || '');
+      // 正则匹配：例如 "购买6个胡萝卜种子" 或 "购买 6 个 胡萝卜 种子"
+      const match = desc.match(/购买\s*(\d+)\s*个\s*([^种子\s]+)/);
+      if (!match) continue;
+
+      const targetCount = Number(match[1]) || total;
+      const plantName = match[2].trim();
+      const needCount = Math.max(0, targetCount - progress);
+      if (needCount <= 0) continue;
+
+      // 根据植物名称匹配种子与商品
+      const { getAllSeeds } = require('../config/gameConfig');
+      const allSeeds = getAllSeeds();
+      const matchedSeed = allSeeds.find(s => s.name === plantName || s.name.includes(plantName) || plantName.includes(s.name));
+      if (!matchedSeed) {
+        logWarn('任务', `成长任务未找到匹配的种子商品: ${plantName}`);
+        continue;
+      }
+
+      const seedId = Number(matchedSeed.seedId);
+      const { getSeedShopId, getShopInfo, buyGoods } = require('./farm-api');
+      const shopId = await getSeedShopId();
+      const shop = await getShopInfo(shopId);
+      const goods = (shop.goods_list || []).find(item => toNum(item.item_id) === seedId && item.unlocked);
+
+      if (!goods) {
+        logWarn('任务', `种子商店未找到商品: ${plantName}种子 (ID:${seedId})`);
+        continue;
+      }
+
+      const price = toNum(goods.price);
+      const { getUserState } = require('../utils/network');
+      const userState = getUserState();
+      const affordable = price > 0 ? Math.floor((userState.gold || 0) / price) : needCount;
+      const finalBuyCount = Math.min(needCount, affordable);
+
+      if (finalBuyCount <= 0) {
+        logWarn('任务', `金币不足，无法购买任务所需 ${plantName}种子 x${needCount}`);
+        continue;
+      }
+
+      log('任务', `检测到成长任务【${desc}】(当前进度:${progress}/${total})，正在自动购买 ${plantName}种子 x${finalBuyCount}...`, {
+        module: 'task', event: '成长任务购买', taskId: t.id, plantName, count: finalBuyCount,
+      });
+
+      await buyGoods(toNum(goods.id), finalBuyCount, price);
+      if (userState.gold) {
+        userState.gold = Math.max(0, userState.gold - finalBuyCount * price);
+      }
+
+      log('任务', `成功购买 ${plantName}种子 x${finalBuyCount}！任务已推进`, {
+        module: 'task', event: '成长任务购买完成', result: 'ok',
+      });
+
+      // 稍作等待后重新拉取并立即领取该任务奖励
+      await sleep(1000);
+      await checkAndClaimTasks();
+    }
+  } catch (err) {
+    if (!isTransientError(err)) {
+      logWarn('任务', `执行成长购买种子任务失败: ${err.message}`);
+    }
+  }
+}
+
 /**
  * 任务系统服务 - 每日任务、成长任务、活跃奖励自动领取
  *
@@ -402,6 +486,8 @@ async function checkAndClaimTasks() {
     await checkAndClaimActives(taskInfo.actives || []);
     // 图鉴奖励
     await checkAndClaimIllustratedRewards();
+    // 自动执行成长任务中的购买种子任务（只做购买）
+    await checkAndExecuteGrowthBuySeedTasks();
   } catch (err) {
     if (isTransientError(err)) return;
     logWarn('任务', `检查任务失败: ${err.message}`, {
