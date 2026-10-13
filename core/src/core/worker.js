@@ -185,6 +185,23 @@ setRecordGoldExpHook((gold, exp) => {
 
 let isRunning = false;
 let loginReady = false;
+let latestDailyGifts = null;
+
+async function syncDailyGiftsToMaster() {
+    try {
+        const overview = await getDailyGiftOverview();
+        if (overview && overview.gifts) {
+            latestDailyGifts = overview;
+            sendToMaster({ type: 'daily_gifts_sync', data: overview });
+            try {
+                const statsService = require('../services/stats');
+                if (statsService && typeof statsService.setLatestDailyGifts === 'function') {
+                    statsService.setLatestDailyGifts(overview);
+                }
+            } catch {}
+        }
+    } catch {}
+}
 let appliedConfigRevision = 0;
 let unifiedSchedulerRunning = false;
 
@@ -265,6 +282,7 @@ async function runDailyRoutines(force = false, options = {}) {
     for (const [name, fn] of tasks) {
         try {
             await fn();
+            await sleep(350);
         } catch (err) {
             log('系统', `每日[${name}]执行失败: ${err.message}`, {
                 module: 'system',
@@ -282,7 +300,9 @@ function stopDailyRoutineTimer() {
 function startDailyRoutineTimer() {
     stopDailyRoutineTimer();
     lastDailyRunDate = getLocalDateKey();
-    runDailyRoutines(true, { skipTask: true }).catch(() => null);
+    workerScheduler.setTimeoutTask('initial_daily_routine', 3500, () => {
+        runDailyRoutines(true, { skipTask: true }).then(() => syncDailyGiftsToMaster()).catch(() => null);
+    });
 
     // 每 60 秒检查一次日期是否变化
     workerScheduler.setIntervalTask('daily_routine_interval', 60000, () => {
@@ -297,6 +317,7 @@ function startDailyRoutineTimer() {
         lastDailyRunDate = today;
         runDailyRoutines(true)
             .then(() => runBadOnceOnStartup(true))
+            .then(() => syncDailyGiftsToMaster())
             .catch(() => null);
     });
 }
@@ -2058,6 +2079,13 @@ async function handleApiCall(msg) {
             }
             case 'getDailyGiftOverview':
                 result = await getDailyGiftOverview();
+                latestDailyGifts = result;
+                try {
+                    const statsService = require('../services/stats');
+                    if (statsService && typeof statsService.setLatestDailyGifts === 'function') {
+                        statsService.setLatestDailyGifts(result);
+                    }
+                } catch {}
                 break;
             case 'getSchedulers':
                 result = { ...getSchedulerRegistrySnapshot(), resources: resourceMonitor.snapshot() };
@@ -2265,6 +2293,9 @@ function syncStatus() {
     stats.automation = getAutomation();
     stats.levelProgress = levelProgress;
     stats.configRevision = appliedConfigRevision;
+    if (latestDailyGifts) {
+        stats.dailyGifts = latestDailyGifts;
+    }
 
     const stableStats = { ...stats };
     delete stableStats.nextChecks;

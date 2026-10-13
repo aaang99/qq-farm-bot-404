@@ -18,9 +18,11 @@ import { useStrategySettings } from '@/composables/settings/useStrategySettings'
 import { useUserSettings } from '@/composables/settings/useUserSettings'
 import { useAdminSystemConfig } from '@/composables/useAdminSystemConfig'
 import { useSettingStore } from '@/stores/setting'
+import { useStatusStore } from '@/stores/status'
 import { useUserStore } from '@/stores/user'
 
 const settingStore = useSettingStore()
+const statusStore = useStatusStore()
 const userStore = useUserStore()
 const route = useRoute()
 
@@ -393,7 +395,10 @@ function confirmDefaultPlanOperation() {
 watch(currentAccountId, async () => {
   settingStore.clearSettingsState()
   resetStrategyState()
+  statusStore.clearAccountScopedData()
   if (currentAccountId.value) {
+    statusStore.fetchStatus(String(currentAccountId.value))
+    statusStore.fetchDailyGifts(String(currentAccountId.value))
     await loadStrategyData()
     syncLocalAutomationSettings()
     syncLocalOfflineSettings()

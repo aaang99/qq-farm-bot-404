@@ -59,6 +59,16 @@ let tongQiGiftCount = 0;
 /** 当前日期键，跨天时自动重置 */
 let currentDateKey = null;
 
+/** 最新每日任务礼包快照（用于持久化到 stats 文件） */
+let latestDailyGiftsSnapshot = null;
+
+function setLatestDailyGifts(gifts) {
+  if (gifts && typeof gifts === 'object') {
+    latestDailyGiftsSnapshot = gifts;
+    scheduleSave();
+  }
+}
+
 /** 上次记录的金币/经验/点券值（用于计算增量） */
 const lastState = {
   gold: -1,
@@ -183,6 +193,7 @@ function doSave() {
     initialState: base,
     lastState: last,
     profile: (profile.level || profile.name) ? profile : (prev.profile || {}),
+    dailyGifts: (latestDailyGiftsSnapshot && latestDailyGiftsSnapshot.gifts) ? latestDailyGiftsSnapshot : (prev.dailyGifts || null),
     // 排行榜每日纯收入（只计正向，不计损耗）
     gains: {
       gold: Math.max(0, dailyIncome.gold),
@@ -434,6 +445,7 @@ module.exports = {
   resetSessionGains,
   getStats,
   saveStats,
+  setLatestDailyGifts,
   getTodayKey,
   loadPersistedStats,
   checkAndResetDailyStats

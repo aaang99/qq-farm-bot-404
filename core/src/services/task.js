@@ -104,6 +104,8 @@ const { getItemById } = require('../config/gameConfig');
 let checking = false;
 let taskClaimDoneDateKey = '';
 let taskClaimLastAt = 0;
+let cachedTaskInfo = null;
+let lastTaskInfoFetchedAt = 0;
 
 const taskScheduler = createScheduler('task');
 
@@ -143,12 +145,21 @@ function isTransientError(err) {
 
 // ---- RPC 调用 ----
 
-async function getTaskInfo() {
+async function getTaskInfo(force = false) {
+  const now = Date.now();
+  if (!force && cachedTaskInfo && now - lastTaskInfoFetchedAt < 15000) {
+    return { task_info: cachedTaskInfo };
+  }
   const request = types.TaskInfoRequest.encode(
     types.TaskInfoRequest.create({})
   ).finish();
   const { body } = await sendMsgAsync('gamepb.taskpb.TaskService', 'TaskInfo', request);
-  return types.TaskInfoReply.decode(body);
+  const reply = types.TaskInfoReply.decode(body);
+  if (reply && reply.task_info) {
+    cachedTaskInfo = reply.task_info;
+    lastTaskInfoFetchedAt = Date.now();
+  }
+  return reply;
 }
 
 async function claimTaskReward(taskId, doShared = false) {
@@ -505,6 +516,8 @@ async function checkAndClaimTasks() {
  */
 function onTaskInfoNotify(payload) {
   if (!payload) return;
+  cachedTaskInfo = payload;
+  lastTaskInfoFetchedAt = Date.now();
   if (!isAutomationOn('task')) return;
 
   const claimable = [

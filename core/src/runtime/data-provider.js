@@ -207,7 +207,15 @@ function createDataProvider(deps) {
         sellItems: (ref, items) => callWorkerApi(resolveAccountId(ref), 'sellItems', items),
 
         // ========== 每日礼包 ==========
-        getDailyGifts: (ref) => callWorkerApi(resolveAccountId(ref), 'getDailyGiftOverview'),
+        getDailyGifts: async (ref) => {
+            const id = resolveAccountId(ref);
+            const gifts = await callWorkerApi(id, 'getDailyGiftOverview');
+            if (gifts && workers[id]) {
+                if (!workers[id].status) workers[id].status = {};
+                workers[id].status.dailyGifts = gifts;
+            }
+            return gifts;
+        },
 
         // ========== Mall ==========
         getMallGoods: (ref) => callWorkerApi(resolveAccountId(ref), 'getMallGoods'),
@@ -387,8 +395,8 @@ function createDataProvider(deps) {
                     }
                 }
 
-                // 尝试从持久化 stats 补全真实等级（离线时也能正常显示等级）
-                if (liveLevel === null || liveLevel === undefined) {
+                // 尝试从持久化 stats 补全真实等级与任务（离线时也能正常显示等级和任务）
+                if (liveLevel === null || liveLevel === undefined || !liveTasks) {
                     try {
                         const path = require('node:path');
                         const fs = require('node:fs');
@@ -396,11 +404,14 @@ function createDataProvider(deps) {
                         const statsFile = path.join(baseDir, 'stats', `${acc.id}.json`);
                         if (fs.existsSync(statsFile)) {
                             const stat = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
-                            if (stat && stat.profile && stat.profile.level) {
+                            if (stat && stat.profile && stat.profile.level && (liveLevel === null || liveLevel === undefined)) {
                                 liveLevel = stat.profile.level;
                             }
-                            if (stat && stat.profile && stat.profile.name && !acc.nick) {
+                            if (stat && stat.profile && stat.profile.name && !acc.nick && !liveNick) {
                                 liveNick = stat.profile.name;
+                            }
+                            if (!liveTasks && stat && stat.dailyGifts && stat.dailyGifts.gifts) {
+                                liveTasks = stat.dailyGifts.gifts;
                             }
                         }
                     } catch {}

@@ -167,7 +167,8 @@ async function performDailyShare(force = false) {
     // 检查是否可以分享
     const canShareResult = await checkCanShare();
     if (!canShareResult || !canShareResult.can_share) {
-      log('分享', '今日暂无可领取分享礼包', { module: 'task', event: DAILY_KEY, result: 'none' });
+      markDoneToday();
+      log('分享', '今日暂无可领取分享礼包 (今日已分享或已达成)', { module: 'task', event: DAILY_KEY, result: 'none' });
       return false;
     }
 

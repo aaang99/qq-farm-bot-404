@@ -3,9 +3,13 @@ import { computed } from 'vue'
 
 const props = withDefaults(defineProps<{
   dailyGifts: any
+  fallbackTasks?: any[]
+  loading?: boolean
   hideCard?: boolean
   showGrowth?: boolean
 }>(), {
+  fallbackTasks: () => [],
+  loading: false,
   hideCard: false,
   showGrowth: false,
 })
@@ -23,8 +27,16 @@ function getGiftIcon(key: string) {
   return GIFT_ICONS[key] || 'i-carbon-gift'
 }
 
-const hasDailyData = computed(() => !!props.dailyGifts)
-const gifts = computed(() => props.dailyGifts?.gifts || [])
+const gifts = computed(() => {
+  if (props.dailyGifts?.gifts && Array.isArray(props.dailyGifts.gifts) && props.dailyGifts.gifts.length > 0) {
+    return props.dailyGifts.gifts
+  }
+  if (props.fallbackTasks && Array.isArray(props.fallbackTasks) && props.fallbackTasks.length > 0) {
+    return props.fallbackTasks
+  }
+  return []
+})
+const hasDailyData = computed(() => !!props.dailyGifts || (props.fallbackTasks && props.fallbackTasks.length > 0))
 
 const growth = computed(() => props.dailyGifts?.growth || null)
 
@@ -106,10 +118,17 @@ function formatGiftProgress(gift: any) {
       </h3>
 
       <div
-        v-if="!hasDailyData"
+        v-if="props.loading && !hasDailyData"
         class="liquid-empty-box rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400"
       >
-        请登录账号后查看
+        <div i-svg-spinners-90-ring-with-bg class="mb-2 inline-block text-2xl text-blue-500" />
+        <div>正在获取每日任务与礼包数据...</div>
+      </div>
+      <div
+        v-else-if="!hasDailyData"
+        class="liquid-empty-box rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400"
+      >
+        暂无任务数据，请确保账号运行中
       </div>
       <div
         v-else-if="!gifts.length"

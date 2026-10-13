@@ -43,6 +43,7 @@ function createWorkerManager(deps) {
     // 按方法名的超时覆盖。萌宠日记单次操作要串行多次 RPC（读组 → 校验 → 操作 → 重读快照），
     // 10 秒默认值会误判超时，取值与上游一致。
     const METHOD_TIMEOUT_MS = {
+        getDailyGiftOverview: 30000,
         getPetDiary: 90000,
         operatePetDiary: 180000,
         getPetDiaryRecords: 30000,
@@ -459,6 +460,12 @@ function createWorkerManager(deps) {
         } else if (msg.type === 'task_permit_release') {
             activePermits.delete(`${accountId}:${String(msg.token || '')}`);
             drainPermitQueue();
+        } else if (msg.type === 'daily_gifts_sync') {
+            const currentWrk = workers[accountId];
+            if (currentWrk) {
+                if (!currentWrk.status) currentWrk.status = {};
+                currentWrk.status.dailyGifts = msg.data;
+            }
         } else if (msg.type === 'status_sync') {
             // 状态同步
             wrk.status = normalizeStatusForPanel(msg.data, accountId, wrk.name);

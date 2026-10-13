@@ -20,7 +20,7 @@ import { onMounted } from 'vue'
 const statusStore = useStatusStore()
 const userStore = useUserStore()
 const bagStore = useBagStore()
-const { status, dailyGifts } = storeToRefs(statusStore)
+const { status, dailyGifts, statusAccountId } = storeToRefs(statusStore)
 const toast = useToastStore()
 
 // 账号自续费弹窗状态
@@ -73,19 +73,30 @@ function closeBagModal() {
 }
 
 const showTaskModal = ref(false)
+const selectedTaskAccount = ref<any>(null)
+const taskModalLoading = ref(false)
 
 function getAccountLevel(acc: any) {
-  if (String(acc.id) === String(props.currentAccountId) && status.value?.status?.level !== undefined) {
+  // 必须严格校验 statusAccountId 属于当前账号，避免切换账号瞬间串用旧状态产生等级闪烁
+  if (String(acc.id) === String(statusAccountId.value) && status.value?.status?.level !== undefined) {
     return status.value.status.level
   }
   return acc.level ?? acc.status?.level ?? 1
 }
 
 function getAccountTaskSummary(acc: any) {
-  const gifts = (String(acc.id) === String(props.currentAccountId) ? dailyGifts.value?.gifts : acc.tasks) || acc.tasks || []
-  if (!gifts.length) return { done: 0, total: 6 }
-  const done = gifts.filter((g: any) => g.doneToday).length
-  return { done, total: gifts.length }
+  // 1. 如果全局 dailyGifts 确属当前账号，优先使用最新的全局数据
+  if (String(acc.id) === String(statusAccountId.value) && dailyGifts.value?.gifts) {
+    const list = dailyGifts.value.gifts
+    const done = list.filter((g: any) => g.doneToday).length
+    return { done, total: list.length || 6 }
+  }
+  // 2. 否则使用账号自身携带的真实 tasks 列表（来自 /api/accounts）
+  if (acc.tasks && Array.isArray(acc.tasks) && acc.tasks.length > 0) {
+    const done = acc.tasks.filter((g: any) => g.doneToday).length
+    return { done, total: acc.tasks.length }
+  }
+  return { done: 0, total: 6 }
 }
 
 onMounted(() => {
@@ -95,10 +106,17 @@ onMounted(() => {
   }
 })
 
-function openTaskModalForAccount(acc: any) {
-  emit('select', acc)
-  statusStore.fetchDailyGifts(String(acc.id))
+async function openTaskModalForAccount(acc: any) {
+  selectedTaskAccount.value = acc
   showTaskModal.value = true
+  taskModalLoading.value = true
+  try {
+    await statusStore.fetchDailyGifts(String(acc.id))
+  } catch {
+    // 忽略异常，降级显示已有数据
+  } finally {
+    taskModalLoading.value = false
+  }
 }
 
 
@@ -445,7 +463,13 @@ function accountAvatar(acc: any) {
             </button>
           </div>
           <div class="flex-1 overflow-y-auto p-3.5 sm:p-4">
-            <DailyOverview :daily-gifts="dailyGifts" :hide-card="true" :show-growth="true" />
+            <DailyOverview
+              :daily-gifts="String(selectedTaskAccount?.id) === String(statusAccountId) ? dailyGifts : null"
+              :fallback-tasks="selectedTaskAccount?.tasks"
+              :loading="taskModalLoading"
+              :hide-card="true"
+              :show-growth="true"
+            />
           </div>
         </div>
       </div>
