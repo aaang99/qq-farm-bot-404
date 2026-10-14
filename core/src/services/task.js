@@ -413,9 +413,8 @@ async function checkAndClaimIllustratedRewards() {
  * 领取单个任务
  */
 async function doClaim(task) {
-  try {
-    const doShare = task.shareMultiple > 1;
-    const shareLabel = doShare ? ` (${task.shareMultiple}倍)` : '';
+  const tryClaim = async (doShare) => {
+    const shareLabel = doShare ? ` (${task.shareMultiple || 2}倍)` : '';
     const result = await claimTaskReward(task.id, doShare);
     const items = result.items || [];
     const summary = items.length > 0 ? getRewardSummary(items) : '无';
@@ -432,7 +431,23 @@ async function doClaim(task) {
     recordOperation('taskClaim', 1);
     await sleep(300);
     return true;
-  } catch (_) {
+  };
+
+  const initialShare = task.shareMultiple > 1;
+  try {
+    return await tryClaim(initialShare);
+  } catch (err) {
+    if (initialShare) {
+      logWarn('任务', `任务[${task.desc}]分享翻倍领取失败(${err.message})，正在尝试普通领取...`);
+      try {
+        await sleep(300);
+        return await tryClaim(false);
+      } catch (fallbackErr) {
+        logWarn('任务', `任务[${task.desc}]普通领取失败: ${fallbackErr.message}`);
+        return false;
+      }
+    }
+    logWarn('任务', `任务[${task.desc}]领取失败: ${err.message}`);
     return false;
   }
 }
