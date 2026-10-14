@@ -321,21 +321,22 @@ export const useStatusStore = defineStore('status', () => {
 
   async function fetchDailyGifts(accountId: string) {
     if (!accountId)
-      return
+      return null
     const requestedId = String(accountId)
     try {
       const { data } = await api.get('/api/daily-gifts', {
         headers: { 'x-account-id': accountId },
       })
-      if (!isCurrentAccount(requestedId))
-        return
       if (data.ok) {
         dailyGifts.value = data.data
+        statusAccountId.value = requestedId
+        return data.data
       }
     }
     catch (e) {
       console.error('获取每日奖励失败', e)
     }
+    return null
   }
 
   async function fetchAccountLogs(accountId = '', limit = 100) {

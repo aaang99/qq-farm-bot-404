@@ -32,7 +32,7 @@ const showPasswordModal = ref(false)
             </span>
           </div>
           <div class="text-[11px] truncate opacity-65" style="color: var(--theme-text);">
-            <span v-if="userStore.userCard">{{ userStore.expireTimeText }} · {{ userStore.accountLimit }}额度</span>
+            <span v-if="userStore.userCard">{{ userStore.expireTimeText }} · {{ userStore.isAdmin ? '♾️' : `${userStore.accountLimit}额度` }}</span>
             <span v-else>无卡密限制</span>
           </div>
         </div>
