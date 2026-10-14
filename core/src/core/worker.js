@@ -105,7 +105,7 @@ const {
 const { nextBusinessBackoffMs } = require('../utils/gateway-health');
 const { runWithRequestPriority } = require('../utils/request-priority');
 const { loadProto } = require('../utils/proto');
-const { setLogHook, log, toNum } = require('../utils/utils');
+const { setLogHook, log, toNum, sleep } = require('../utils/utils');
 const { resourcePolicy, createResourceMonitor } = require('../runtime/resource-policy');
 
 // 设置环境变量中的账号ID
