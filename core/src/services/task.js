@@ -167,7 +167,12 @@ async function claimTaskReward(taskId, doShared = false) {
     types.ClaimTaskRewardRequest.create({ id: toLong(taskId), do_shared: doShared })
   ).finish();
   const { body } = await sendMsgAsync('gamepb.taskpb.TaskService', 'ClaimTaskReward', request);
-  return types.ClaimTaskRewardReply.decode(body);
+  const reply = types.ClaimTaskRewardReply.decode(body);
+  if (reply && reply.task_info) {
+    cachedTaskInfo = reply.task_info;
+    lastTaskInfoFetchedAt = Date.now();
+  }
+  return reply;
 }
 
 /**
@@ -426,6 +431,7 @@ async function doClaim(task) {
       module: 'task', event: '领取任务', result: 'ok', taskId: task.id, shared: doShare,
     });
 
+    task.isClaimed = true;
     taskClaimDoneDateKey = getDateKey();
     taskClaimLastAt = Date.now();
     recordOperation('taskClaim', 1);
@@ -434,15 +440,27 @@ async function doClaim(task) {
   };
 
   const initialShare = task.shareMultiple > 1;
+  const isAlreadyClaimed = (e) => String(e && e.message || '').includes('1008002') || String(e && e.message || '').includes('已领取');
+
   try {
     return await tryClaim(initialShare);
   } catch (err) {
+    if (isAlreadyClaimed(err)) {
+      task.isClaimed = true;
+      taskClaimDoneDateKey = getDateKey();
+      return true;
+    }
     if (initialShare) {
       logWarn('任务', `任务[${task.desc}]分享翻倍领取失败(${err.message})，正在尝试普通领取...`);
       try {
         await sleep(300);
         return await tryClaim(false);
       } catch (fallbackErr) {
+        if (isAlreadyClaimed(fallbackErr)) {
+          task.isClaimed = true;
+          taskClaimDoneDateKey = getDateKey();
+          return true;
+        }
         logWarn('任务', `任务[${task.desc}]普通领取失败: ${fallbackErr.message}`);
         return false;
       }
