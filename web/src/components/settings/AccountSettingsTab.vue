@@ -91,21 +91,18 @@ function closeDropdown() {
 }
 
 function getAccountLevel(acc: any) {
-  // 必须严格校验 statusAccountId 属于当前账号，避免切换账号瞬间串用旧状态产生等级闪烁
-  if (String(acc.id) === String(statusAccountId.value) && status.value?.status?.level !== undefined) {
-    return status.value.status.level
-  }
-  return acc.level ?? acc.status?.level ?? 1
+  const aid = String(acc.id)
+  const live = statusStore.statusByAccount && statusStore.statusByAccount[aid]?.status?.level
+  return Number(live ?? acc.level ?? acc.status?.level ?? 1)
 }
 
 function getAccountTaskSummary(acc: any) {
-  // 1. 如果全局 dailyGifts 确属当前账号，优先使用最新的全局数据
-  if (String(acc.id) === String(statusAccountId.value) && dailyGifts.value?.gifts) {
-    const list = dailyGifts.value.gifts
-    const done = list.filter((g: any) => g.doneToday).length
-    return { done, total: list.length || 6 }
+  const aid = String(acc.id)
+  const liveGifts = statusStore.dailyGiftsByAccount && statusStore.dailyGiftsByAccount[aid]?.gifts
+  if (liveGifts && Array.isArray(liveGifts) && liveGifts.length > 0) {
+    const done = liveGifts.filter((g: any) => g.doneToday).length
+    return { done, total: liveGifts.length }
   }
-  // 2. 否则使用账号自身携带的真实 tasks 列表（来自 /api/accounts）
   if (acc.tasks && Array.isArray(acc.tasks) && acc.tasks.length > 0) {
     const done = acc.tasks.filter((g: any) => g.doneToday).length
     return { done, total: acc.tasks.length }
@@ -577,7 +574,7 @@ function accountAvatar(acc: any) {
 
           <!-- 内容区域：原生 BagPanel 完整功能无缝嵌入 -->
           <div class="flex-1 overflow-y-auto p-3 sm:p-5">
-            <BagPanel />
+            <BagPanel :account-id="selectedBagAccount?.id" />
           </div>
         </div>
       </div>

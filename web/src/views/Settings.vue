@@ -288,6 +288,10 @@ async function saveAutoCodeRefreshSettings() {
 }
 
 function openAccountSettings(account: any) {
+  if (account) {
+    selectAccount(account)
+    resetStrategyState()
+  }
   openDrawer('account-config', account)
 }
 
@@ -396,6 +400,8 @@ watch(currentAccountId, async () => {
   settingStore.clearSettingsState()
   resetStrategyState()
   statusStore.clearAccountScopedData()
+  const farmStore = (await import('@/stores/farm')).useFarmStore()
+  farmStore.clearFarmData()
   if (currentAccountId.value) {
     statusStore.fetchStatus(String(currentAccountId.value))
     statusStore.fetchDailyGifts(String(currentAccountId.value))

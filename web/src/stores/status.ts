@@ -30,6 +30,9 @@ export const useStatusStore = defineStore('status', () => {
   const accountLogs = ref<any[]>([])
   const dailyGifts = ref<DailyGiftsResponse | null>(null)
   const statusAccountId = ref('')
+  // 按照账号 ID 严格进行物理隔离的全局状态与每日礼包字典，杜绝任何串台
+  const statusByAccount = ref<Record<string, any>>({})
+  const dailyGiftsByAccount = ref<Record<string, any>>({})
   const loading = ref(false)
   const error = ref('')
   const realtimeConnected = ref(false)
@@ -133,9 +136,15 @@ export const useStatusStore = defineStore('status', () => {
     if (currentRealtimeAccountId.value && accountId !== currentRealtimeAccountId.value)
       return
     if (body.status && typeof body.status === 'object') {
-      status.value = normalizeStatusPayload(body.status)
-      statusAccountId.value = accountId || currentRealtimeAccountId.value || getCurrentAccountId()
-      error.value = ''
+      const normalized = normalizeStatusPayload(body.status)
+      if (accountId) {
+        statusByAccount.value[accountId] = normalized
+      }
+      if (!currentRealtimeAccountId.value || accountId === currentRealtimeAccountId.value || accountId === getCurrentAccountId()) {
+        status.value = normalized
+        statusAccountId.value = accountId || currentRealtimeAccountId.value || getCurrentAccountId()
+        error.value = ''
+      }
     }
   }
 
@@ -269,8 +278,12 @@ export const useStatusStore = defineStore('status', () => {
       if (!isCurrentAccount(requestedId))
         return
       if (data.ok) {
-        status.value = normalizeStatusPayload(data.data)
-        statusAccountId.value = requestedId
+        const normalized = normalizeStatusPayload(data.data)
+        statusByAccount.value[requestedId] = normalized
+        if (isCurrentAccount(requestedId)) {
+          status.value = normalized
+          statusAccountId.value = requestedId
+        }
         error.value = ''
       }
       else {
@@ -328,8 +341,11 @@ export const useStatusStore = defineStore('status', () => {
         headers: { 'x-account-id': accountId },
       })
       if (data.ok) {
-        dailyGifts.value = data.data
-        statusAccountId.value = requestedId
+        dailyGiftsByAccount.value[requestedId] = data.data
+        if (isCurrentAccount(requestedId)) {
+          dailyGifts.value = data.data
+          statusAccountId.value = requestedId
+        }
         return data.data
       }
     }

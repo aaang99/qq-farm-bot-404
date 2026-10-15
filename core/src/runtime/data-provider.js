@@ -398,6 +398,23 @@ function createDataProvider(deps) {
                         liveTasks = worker.status.dailyGifts.gifts;
                     }
                 }
+                // 如果实时数据未获取到，从该账号自身的持久化 stats 中读取真实的等级与任务，绝不向其他账号借用数据！
+                if (!liveLevel || !liveTasks) {
+                    try {
+                        const persisted = require('../services/stats').loadPersistedStats(account.id);
+                        if (persisted) {
+                            if (!liveLevel && persisted.profile && persisted.profile.level) {
+                                liveLevel = persisted.profile.level;
+                            }
+                            if (!liveNick && persisted.profile && persisted.profile.name) {
+                                liveNick = persisted.profile.name;
+                            }
+                            if (!liveTasks && persisted.dailyGifts && persisted.dailyGifts.gifts) {
+                                liveTasks = persisted.dailyGifts.gifts;
+                            }
+                        }
+                    } catch (_) {}
+                }
 
                 // 尝试从持久化 stats 补全真实等级与任务（离线时也能正常显示等级和任务）
                 if (liveLevel === null || liveLevel === undefined || !liveTasks) {

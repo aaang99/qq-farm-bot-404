@@ -560,15 +560,14 @@ async function runStarActivityAutoClaims() {
     starActivityClaimRunning = true;
     try {
         const {
-            getStarActivity,
             claimSeasonPassportRewards,
             claimSolarTermsReward,
             claimStarRecordRewards,
             claimQingmeiSeeds,
             brewAndSellQingmeiWine
         } = require('../services/activity');
-        const needsStarActivity = claimPassport || claimSolarTerms || claimRecords || claimQingmeiSeedsEnabled || brewQingmeiWineEnabled;
-        const activity = needsStarActivity ? await getStarActivity() : {};
+        // 心许千灯星垂野已于2026年9月官方下线，彻底跳过 getStarActivity，避免产生未找到活动报错
+        const activity = {};
         if (claimPassport && Number(activity?.passport?.claimableLevels || 0) > 0) {
             try {
                 const result = await claimSeasonPassportRewards();
