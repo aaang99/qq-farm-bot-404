@@ -82,9 +82,6 @@ export const useUserStore = defineStore('user', () => {
     try {
       const res = await api.post('/api/login', { username, password })
       if (res.data.ok) {
-        try {
-          localStorage.removeItem('current_account_id')
-        } catch {}
         token.value = res.data.data.token
         userInfo.value = {
           username: res.data.data.user.username,

@@ -293,6 +293,18 @@ const DEFAULT_AUTOMATION = {
     // 拾物小铺兑换（exchange，需用户指定商品）、锦囊付费刷新（花点券）、
     // markStories（纯 UI 状态无奖励）、skipBattle（是设置项不是任务）。
     pet_diary_adopt: false,
+    milk_tea_share_daily: false,
+    milk_tea_share_rewards: false,
+    milk_tea_fund_rewards: false,
+    milk_tea_cashier: false,
+    milk_tea_wages: false,
+    milk_tea_upgrade: false,
+    milk_tea_craft: false,
+    milk_tea_boost: false,
+    milk_tea_hire: false,
+    milk_tea_hire_duration: 1,
+    milk_tea_hire_talent: 0,
+    milk_tea_seed_buy: false,
     pet_diary_feed: false,
     auto_buy_dog_food: false,
     auto_feed_dog: false,
@@ -307,6 +319,7 @@ const DEFAULT_AUTOMATION = {
     fertilizer_gift: false,
     fertilizer_buy_organic: false,
     fertilizer_buy_normal: false,
+    mall_coupon_gift_buy: false,
     mystery_shop_auto_buy: false,
     mystery_shop_allow_gold: true,
     mystery_shop_allow_coupon: false,
@@ -324,7 +337,6 @@ const DEFAULT_AUTOMATION = {
 // 统一关闭，避免活动入口隐藏后后台任务继续执行。
 const HIDDEN_ACTIVITY_AUTOMATION_KEYS = new Set([
     'star_passport_claim',
-    'star_solar_claim',
     'star_record_claim',
     'qingmei_seed_claim',
     'qingmei_wine_brew',
@@ -365,6 +377,8 @@ const SHARE_REWARD_AUTOMATION_KEYS = ['share_reward_share', 'share_reward_daily'
 // （core 是 CommonJS、web 是 TS，无法共享模块）。改一处必须改另一处，
 // 否则前端会显示后端已强制关闭的开关。
 const TIMED_ACTIVITY_AUTOMATION_GROUPS = [
+    { startTime: 1792029600, endTime: 1794844799, keys: ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] },
+    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy'] },
     { startTime: 1790179200, endTime: 1791388799, keys: WISH_SIGN_AUTOMATION_KEYS },
     { startTime: 1790179200, endTime: 1791820799, keys: SHARE_REWARD_AUTOMATION_KEYS },
     {
@@ -740,7 +754,8 @@ const DEFAULT_LOGIN_LINKS = {
 };
 
 const DEFAULT_CAPTURE_CONFIG = {
-    enabled: false,
+    defaultsVersion: 1,
+    enabled: true,
     embedded: true,
     apiBase: 'http://127.0.0.1:8450',
     apiToken: '',
@@ -796,6 +811,9 @@ function normalizeAccountConfig(raw, fallbackConfig = accountFallbackConfig) {
                 cfg.automation[key] = Math.max(60, Math.min(7200, Number(value) || 300));
             } else if (key === 'qixi_friend_priority') {
                 cfg.automation[key] = normalizeKnownFriendGids(value, []);
+            } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
+                const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
+                cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;
@@ -989,6 +1007,8 @@ function ensureAccountConfig(accountId, opts = {}) {
 
 // ==================== 全局配置持久化 ====================
 
+let captureDefaultsMigrated = false;
+
 function loadGlobalConfig() {
     ensureDataDir();
     try {
@@ -1095,10 +1115,10 @@ function loadGlobalConfig() {
             };
         }
 
-        // Code/GID 抓取服务与登录方式配置
+        // Code/GID 抓取服务与登录方式配置 (默认强行开启，开箱即用)
         if (data.captureConfig && typeof data.captureConfig === 'object') {
             globalConfig.captureConfig = {
-                enabled: data.captureConfig.enabled === true,
+                enabled: data.captureConfig.enabled !== false,
                 embedded: data.captureConfig.embedded !== false,
                 apiBase: String(data.captureConfig.apiBase || DEFAULT_CAPTURE_CONFIG.apiBase).trim(),
                 apiToken: String(data.captureConfig.apiToken || '').trim(),
@@ -1239,6 +1259,7 @@ function setAdminPasswordHash(hash) {
 }
 
 loadGlobalConfig();
+if (captureDefaultsMigrated) saveGlobalConfig();
 
 
 // ==================== 便捷访问器 ====================
@@ -1297,6 +1318,9 @@ function applyConfigSnapshot(patch = {}, opts = {}) {
                 cfg.automation[key] = Math.max(60, Math.min(7200, Number(value) || 300));
             } else if (key === 'qixi_friend_priority') {
                 cfg.automation[key] = normalizeKnownFriendGids(value, []);
+            } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
+                const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
+                cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;
@@ -1888,9 +1912,11 @@ function setLoginLinks(config) {
 // ==================== Code/GID 抓取服务配置 ====================
 
 function getCaptureConfig() {
-    return globalConfig.captureConfig
+    const cfg = globalConfig.captureConfig
         ? { ...DEFAULT_CAPTURE_CONFIG, ...globalConfig.captureConfig }
         : { ...DEFAULT_CAPTURE_CONFIG };
+    if (cfg.enabled === undefined) cfg.enabled = true;
+    return cfg;
 }
 
 function setCaptureConfig(config) {

@@ -328,7 +328,7 @@ async function completeCaptureAccount() {
       throw new Error(data?.error || (props.editData ? '更新账号失败' : '添加账号失败'))
     localStorage.setItem(CAPTURE_SUCCESS_STORAGE_KEY, '1')
     stopCaptureCheck()
-    const capTargetId = String(data?.data?.accountId || data?.targetAccountId || '')
+    const capTargetId = String(props.editData?.id || data?.data?.accountId || data?.targetAccountId || '')
     captureFlow.value = null
     emit('saved', capTargetId)
     close()
@@ -410,7 +410,7 @@ async function addAccount(data: any) {
   try {
     const res = await api.post('/api/accounts', data)
     if (res.data.ok) {
-      const targetId = String(res.data.targetAccountId || (res.data.data?.accounts?.length ? res.data.data.accounts[res.data.data.accounts.length - 1].id : ''))
+      const targetId = String(props.editData?.id || data.id || res.data.targetAccountId || (res.data.data?.accounts?.length ? res.data.data.accounts[res.data.data.accounts.length - 1].id : ''))
       emit('saved', targetId)
       close()
     }

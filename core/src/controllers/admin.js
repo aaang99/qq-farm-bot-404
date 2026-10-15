@@ -609,7 +609,8 @@ function startAdminServer(dataProvider) {
     getRuntimeConfig,
     updateRuntimeConfig,
   });
-  adminLogger.info("抓包服务默认关闭，未随管理面板启动运行");
+    // 抓包服务默认随应用启动嵌入运行（监听 18000 端口）
+  ensureEmbeddedCaptureService();
   registerAdminCaptureRoutes({
     app,
     store,

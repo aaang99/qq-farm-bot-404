@@ -102,7 +102,10 @@ export const useAccountStore = defineStore('account', () => {
   }
 
   function selectAccount(id: string) {
-    currentAccountId.value = id
+    currentAccountId.value = String(id || '')
+    try {
+      localStorage.setItem('current_account_id', String(id || ''))
+    } catch {}
   }
 
   function setCurrentAccount(acc: Account) {
