@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import StrategySettingsTab from '@/components/settings/StrategySettingsTab.vue'
 import StrategyTimingPanel from '@/components/settings/StrategyTimingPanel.vue'
+import AccountDeviceProtocolCard from '@/components/settings/AccountDeviceProtocolCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -357,6 +358,12 @@ watch(() => props.currentAccountId, loadQixiFriends)
             </BaseButton>
           </div>
         </article>
+
+        <!-- 账号专属：自定义设备登录卡片 (排列在卡片最后一位) -->
+        <AccountDeviceProtocolCard
+          :current-account-id="props.currentAccountId"
+          :current-account-name="props.currentAccountName"
+        />
       </div>
     </template>
 
