@@ -252,6 +252,16 @@
       "sha256": "f29ba6766aecd1244678f161fc8c5a8edc92672caef2ac41003db861a7ed8efb",
       "sourceTable": "delayRes_config_ItemInfo",
       "sourceCacheKey": "d814afb835a9b966c2d00afd"
+    },
+    {
+      "id": 22254,
+      "name": "天山红枫种子",
+      "file": "22254.png",
+      "url": "https://cdn-resource.nqf.qq.com/release/remote/plant/native/cd/cd35525b-6622-4473-83ea-125b1f13a525.5ae5f.png",
+      "assetPath": "model/v4/Crop_2254_Seed/spriteFrame",
+      "sha256": "f85fa3047110549fe5e8eac7850e84e78e340d0c7ae69bb2a6e2e5ae7d6c3a1d",
+      "sourceTable": "delayRes_config_ItemInfo",
+      "sourceCacheKey": "d814afb835a9b966c2d00afd"
     }
   ]
 }

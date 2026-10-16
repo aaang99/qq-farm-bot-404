@@ -1,6 +1,6 @@
 {
   "sourceCacheKey": "d814afb835a9b966c2d00afd",
-  "notes": "分件 Spine 作物早期复用基础植物阶段；成熟使用官方图鉴静态图标，非 Spine 动画渲染。",
+  "notes": "森野黄金芽及变异的阶段2–5使用各自官方 Spine 图集阶段整图（2jie–5jie / pt_sz_2–pt_sz_5），不使用数字零件；成熟仍使用图鉴静态图标，非 Spine 动画渲染。",
   "items": [
     {
       "asset": "Crop_525",
@@ -286,33 +286,41 @@
       "asset": "Crop_9005",
       "phase": 2,
       "file": "Crop_9005/2.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/4a/4a7933c9-5b1b-4c1f-bcd4-1dfdba8567d6.ce2ee.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1029005",
-      "sha256": "90312a4aadc48364e303d05da7235e2aa21adf34d117140ce6ffadb83103c5bb"
+      "sha256": "a77d9aaa230a9350bf30bd75a55ae836c070a74b8f9a2cc80c410a9401e9abc8",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.275a7.png",
+      "atlasRegion": "2jie"
     },
     {
       "asset": "Crop_9005",
       "phase": 3,
       "file": "Crop_9005/3.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/4a/4a7933c9-5b1b-4c1f-bcd4-1dfdba8567d6.ce2ee.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1029005",
-      "sha256": "bd2c8e21f0b441b36c74321730df6cc5c656dc0ea5b6ef4f2874e8a6b7748316"
+      "sha256": "44bf28154b0f2046b7b05820654c8166f7aedc1753710a7a378881a87c0ce63e",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.275a7.png",
+      "atlasRegion": "3jie"
     },
     {
       "asset": "Crop_9005",
       "phase": 4,
       "file": "Crop_9005/4.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/4a/4a7933c9-5b1b-4c1f-bcd4-1dfdba8567d6.ce2ee.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1029005",
-      "sha256": "597690af0f9ed5f99dc36c4a7016f2a3ec12fae9099c32df8a36b566d3fb7b6c"
+      "sha256": "6105debe6b0f3657f733c553fe6af94aee6e722c28dd868e17c088331deaa6b1",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.275a7.png",
+      "atlasRegion": "4jie"
     },
     {
       "asset": "Crop_9005",
       "phase": 5,
       "file": "Crop_9005/5.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/4a/4a7933c9-5b1b-4c1f-bcd4-1dfdba8567d6.ce2ee.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1029005",
-      "sha256": "d8e5d788f4f482df62ed57e9be6b9949d8ce934083168a428dbcafdcfe922a80"
+      "sha256": "f77ed5c7ba73c3b6e00593afadbe14f3985982118331134813f1e3c886504d93",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.275a7.png",
+      "atlasRegion": "5jie"
     },
     {
       "asset": "Crop_9005",
@@ -326,41 +334,51 @@
       "asset": "Crop_9005",
       "phase": 7,
       "file": "Crop_9005/7.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/4a/4a7933c9-5b1b-4c1f-bcd4-1dfdba8567d6.ce2ee.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1029005",
-      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e"
+      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.275a7.png",
+      "atlasRegion": "kuwei"
     },
     {
       "asset": "Plant_1028005",
       "phase": 2,
-      "file": "Crop_9005/2.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "file": "Plant_1028005/2.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/ff/ffb75b30-7cdf-4c37-8268-8ee8616748ee.9aa4c.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1028005",
-      "sha256": "90312a4aadc48364e303d05da7235e2aa21adf34d117140ce6ffadb83103c5bb"
+      "sha256": "427e85cb13d4ded96aa4b81a8a5400bf04f98301a47ad5b0a4833b92c6fe36e5",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/5d/5d91eabe-7438-4697-8a5a-c65cbff55a7c.56c36.png",
+      "atlasRegion": "pt_sz_2"
     },
     {
       "asset": "Plant_1028005",
       "phase": 3,
-      "file": "Crop_9005/3.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "file": "Plant_1028005/3.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/ff/ffb75b30-7cdf-4c37-8268-8ee8616748ee.9aa4c.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1028005",
-      "sha256": "bd2c8e21f0b441b36c74321730df6cc5c656dc0ea5b6ef4f2874e8a6b7748316"
+      "sha256": "7bb83bdffa3e1de5484f6b7b452ace99ee5b0d4c766de9fd53c2f6faf2f2a10c",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/5d/5d91eabe-7438-4697-8a5a-c65cbff55a7c.56c36.png",
+      "atlasRegion": "pt_sz_3"
     },
     {
       "asset": "Plant_1028005",
       "phase": 4,
-      "file": "Crop_9005/4.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "file": "Plant_1028005/4.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/ff/ffb75b30-7cdf-4c37-8268-8ee8616748ee.9aa4c.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1028005",
-      "sha256": "597690af0f9ed5f99dc36c4a7016f2a3ec12fae9099c32df8a36b566d3fb7b6c"
+      "sha256": "a060848dbbe0168111b5aa5f7f7f6b591fb3c66c3eda08d70781fd2e259a3d11",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/5d/5d91eabe-7438-4697-8a5a-c65cbff55a7c.56c36.png",
+      "atlasRegion": "pt_sz_4"
     },
     {
       "asset": "Plant_1028005",
       "phase": 5,
-      "file": "Crop_9005/5.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/48/48f24b60-e7dc-4f01-ba81-4f113a21407a.a2533.json",
+      "file": "Plant_1028005/5.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/ff/ffb75b30-7cdf-4c37-8268-8ee8616748ee.9aa4c.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1028005",
-      "sha256": "d8e5d788f4f482df62ed57e9be6b9949d8ce934083168a428dbcafdcfe922a80"
+      "sha256": "b466ae13ddc192f3199b685591914e731040a8f6421f46b8e9a58fbd2b40359a",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/5d/5d91eabe-7438-4697-8a5a-c65cbff55a7c.56c36.png",
+      "atlasRegion": "pt_sz_5"
     },
     {
       "asset": "Plant_1028005",
@@ -374,9 +392,11 @@
       "asset": "Plant_1028005",
       "phase": 7,
       "file": "Plant_1028005/7.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/00/0091895d-98ef-4cd1-b9ea-0ad6140d063d.16c1e.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/ff/ffb75b30-7cdf-4c37-8268-8ee8616748ee.9aa4c.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1028005",
-      "sha256": "ef30a6de919cc604bb8f00a2e6bbe2860532f7e948a46d7ad6ce448b50df3031"
+      "sha256": "ef30a6de919cc604bb8f00a2e6bbe2860532f7e948a46d7ad6ce448b50df3031",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/5d/5d91eabe-7438-4697-8a5a-c65cbff55a7c.56c36.png",
+      "atlasRegion": "kuwei"
     },
     {
       "asset": "gold/Crop_525",
@@ -662,33 +682,41 @@
       "asset": "Plant_1129005",
       "phase": 2,
       "file": "Plant_1129005/2.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/c4/c4a71648-0114-4fa1-9797-b5025b1860ea.56a38.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1129005",
-      "sha256": "f1879cfdd417f2edb9b7f9085881b9882ec8fc41d0cf01354c52a685b26034d3"
+      "sha256": "d36d6a7b2d1849274aadbcfc4bd2fafc1869fc873e361bf4bc5bfe0697c3a7ce",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/83/83a9b14d-323b-44ac-b23a-22de1655f22e.85818.png",
+      "atlasRegion": "2jie"
     },
     {
       "asset": "Plant_1129005",
       "phase": 3,
       "file": "Plant_1129005/3.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/c4/c4a71648-0114-4fa1-9797-b5025b1860ea.56a38.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1129005",
-      "sha256": "55efa434f3cbed203edcbf14d79d80ae517b9f0427183e0b45e2f21a235f83a5"
+      "sha256": "910cee341edacc0b4b985958d9911c512b42912dd42e79ab1a8d0203e9b6d225",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/83/83a9b14d-323b-44ac-b23a-22de1655f22e.85818.png",
+      "atlasRegion": "3jie"
     },
     {
       "asset": "Plant_1129005",
       "phase": 4,
       "file": "Plant_1129005/4.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/c4/c4a71648-0114-4fa1-9797-b5025b1860ea.56a38.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1129005",
-      "sha256": "f01dc7e7f3501baab1d4037682ff3228dbf11e246805c2070de7729e171f5999"
+      "sha256": "4d5a6ea2656fecf9b330ab7568c24c7a798ccd14702d85b384f7653b3223ed2a",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/83/83a9b14d-323b-44ac-b23a-22de1655f22e.85818.png",
+      "atlasRegion": "4jie"
     },
     {
       "asset": "Plant_1129005",
       "phase": 5,
       "file": "Plant_1129005/5.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/c4/c4a71648-0114-4fa1-9797-b5025b1860ea.56a38.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1129005",
-      "sha256": "90cab779e1a163a2a2d14b9f7ed78125adc80cf916b68e196a9da8803240f3da"
+      "sha256": "85ad12b1b26b592807a59a6690aa815991927ccf1e5ef91ea74fa29b4236feef",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/83/83a9b14d-323b-44ac-b23a-22de1655f22e.85818.png",
+      "atlasRegion": "5jie"
     },
     {
       "asset": "Plant_1129005",
@@ -702,41 +730,51 @@
       "asset": "Plant_1129005",
       "phase": 7,
       "file": "Plant_1129005/7.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/c4/c4a71648-0114-4fa1-9797-b5025b1860ea.56a38.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1129005",
-      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e"
+      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/83/83a9b14d-323b-44ac-b23a-22de1655f22e.85818.png",
+      "atlasRegion": "kuwei"
     },
     {
       "asset": "Plant_1128005",
       "phase": 2,
-      "file": "Plant_1129005/2.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "file": "Plant_1128005/2.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/e1/e1dbf834-5c52-4c24-9d0e-462af16a1cca.cfa4b.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1128005",
-      "sha256": "f1879cfdd417f2edb9b7f9085881b9882ec8fc41d0cf01354c52a685b26034d3"
+      "sha256": "4dbdac5a33a625bb5330e41f42100f02addc3190954014e791e14c882b5fd66e",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.1e3d5.png",
+      "atlasRegion": "pt_sz_2"
     },
     {
       "asset": "Plant_1128005",
       "phase": 3,
-      "file": "Plant_1129005/3.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "file": "Plant_1128005/3.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/e1/e1dbf834-5c52-4c24-9d0e-462af16a1cca.cfa4b.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1128005",
-      "sha256": "55efa434f3cbed203edcbf14d79d80ae517b9f0427183e0b45e2f21a235f83a5"
+      "sha256": "d28ea94dca0cb762c9df1de9839e22d04c61a18ecf4ccd42a96cb22bf96436da",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.1e3d5.png",
+      "atlasRegion": "pt_sz_3"
     },
     {
       "asset": "Plant_1128005",
       "phase": 4,
-      "file": "Plant_1129005/4.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "file": "Plant_1128005/4.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/e1/e1dbf834-5c52-4c24-9d0e-462af16a1cca.cfa4b.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1128005",
-      "sha256": "f01dc7e7f3501baab1d4037682ff3228dbf11e246805c2070de7729e171f5999"
+      "sha256": "eedf89aa54ae136cf5b1c21585b943f7e4b15af828079c16a731723424ab9d0a",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.1e3d5.png",
+      "atlasRegion": "pt_sz_4"
     },
     {
       "asset": "Plant_1128005",
       "phase": 5,
-      "file": "Plant_1129005/5.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/83/83a9b14d-323b-44ac-b23a-22de1655f22e.a2533.json",
+      "file": "Plant_1128005/5.png",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/e1/e1dbf834-5c52-4c24-9d0e-462af16a1cca.cfa4b.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1128005",
-      "sha256": "90cab779e1a163a2a2d14b9f7ed78125adc80cf916b68e196a9da8803240f3da"
+      "sha256": "a5d18bcfa561f99b92135ab77e483cd24a8e706ee2880fb28957d43c3ccacdaf",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.1e3d5.png",
+      "atlasRegion": "pt_sz_5"
     },
     {
       "asset": "Plant_1128005",
@@ -750,9 +788,11 @@
       "asset": "Plant_1128005",
       "phase": 7,
       "file": "Plant_1128005/7.png",
-      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.a2533.json",
+      "sourceUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/import/e1/e1dbf834-5c52-4c24-9d0e-462af16a1cca.cfa4b.json",
       "sourceSpine": "spine/v2/xiyouzhongzi/senyehuangjinya/1128005",
-      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e"
+      "sha256": "d97ac620d30e1c22e8d847be0d0c857a9b6c98378530a965cd273166ca27970e",
+      "textureUrl": "https://cdn-resource.nqf.qq.com/release/remote/mainscene/native/31/31aaa4c1-14a9-46a7-b26f-2a61a31e1d2b.1e3d5.png",
+      "atlasRegion": "kuwei"
     },
     {
       "asset": "Crop_435",

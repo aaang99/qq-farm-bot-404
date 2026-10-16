@@ -55,6 +55,8 @@ const defaultAutomation = {
   milk_tea_craft: false,
   milk_tea_boost: false,
   milk_tea_hire: false,
+    milk_tea_interact: false,
+    milk_tea_interaction_type: 1,
   milk_tea_hire_duration: 1,
   milk_tea_hire_talent: 0,
   milk_tea_seed_buy: false,

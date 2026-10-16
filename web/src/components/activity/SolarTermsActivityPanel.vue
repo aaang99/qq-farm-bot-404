@@ -6,6 +6,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import { useAccountStore } from '@/stores/account'
 import { useToastStore } from '@/stores/toast'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import HeluSolarTermsPanel from './HeluSolarTermsPanel.vue'
 
 defineProps<{ labels: ActivityLabels }>()
@@ -77,13 +78,12 @@ onUnmounted(() => {
 <template>
   <section class="space-y-3">
     <div class="flex items-center justify-between gap-3">
-      <button @click="$emit('back')">← 返回活动列表</button>
-      <button :disabled="busy || !currentAccountId" @click="refresh">{{ busy ? '加载中…' : '刷新' }}</button>
+      <BaseButton variant="secondary" @click="$emit('back')">← 返回活动列表</BaseButton>
+      <BaseButton variant="secondary" :loading="busy" :disabled="busy || !currentAccountId" @click="refresh">刷新</BaseButton>
     </div>
-    <h2 class="text-xl font-semibold">节令小札</h2>
-    <p v-if="!currentAccountId">请先选择账号</p>
-    <p v-else-if="error" role="alert">{{ error }}</p>
-    <p v-else-if="!solar">{{ busy ? '正在读取节令…' : '暂无节令数据' }}</p>
+    <p v-if="!currentAccountId" class="rounded-xl bg-white p-8 text-center text-sm text-gray-500 dark:bg-gray-800">请先选择账号</p>
+    <p v-else-if="error" role="alert" class="rounded-xl bg-red-50 p-6 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{{ error }}</p>
+    <p v-else-if="!solar" class="rounded-xl bg-white p-8 text-center text-sm text-gray-500 dark:bg-gray-800" role="status">{{ busy ? '正在读取节令…' : '暂无节令数据' }}</p>
     <HeluSolarTermsPanel v-else :solar-terms="solar" :loading="busy" :labels="labels" @claim="claim" />
   </section>
 </template>

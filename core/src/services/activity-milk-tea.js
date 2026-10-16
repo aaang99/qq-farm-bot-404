@@ -10,7 +10,7 @@ function normalizeWireMaps(value) {
 }
 const WINDOW = { startTime: 1792029600, settleTime: 1794671999, endTime: 1794844799 };
 const ACTIONS = { create: [53, 'create_shop'], rename: [54, 'rename_shop'], shop: [55, 'get_shop'], hireList: [56, 'get_hire_list'], hire: [57, 'hire'], workshop: [58, 'get_workshop'], cashier: [59, 'claim_cashier'], boost: [60, 'boost'], upgrade: [61, 'upgrade'], craft: [62, 'craft'], work: [63, 'get_work_page'], wages: [64, 'claim_wages'], interact: [65, 'interact'], rank: [66, 'get_rank'], sales: [67, 'get_sales_log'], hireDisabled: [68, 'set_hire_disable'] };
-const AUTO_ACTIONS = { milk_tea_cashier: 'cashier', milk_tea_wages: 'wages', milk_tea_upgrade: 'upgrade', milk_tea_craft: 'craft', milk_tea_boost: 'boost', milk_tea_hire: 'hire', milk_tea_seed_buy: 'buy', milk_tea_share_daily: 'shareDaily', milk_tea_share_rewards: 'shareRewards', milk_tea_fund_rewards: 'fundRewards' };
+const AUTO_ACTIONS = { milk_tea_cashier: 'cashier', milk_tea_wages: 'wages', milk_tea_upgrade: 'upgrade', milk_tea_craft: 'craft', milk_tea_boost: 'boost', milk_tea_hire: 'hire', milk_tea_interact: 'interact', milk_tea_seed_buy: 'buy', milk_tea_share_daily: 'shareDaily', milk_tea_share_rewards: 'shareRewards', milk_tea_fund_rewards: 'fundRewards' };
 function phase(now, window = WINDOW) { return now < window.startTime ? 'upcoming' : now > window.endTime ? 'ended' : now >= window.settleTime ? 'settling' : 'business'; }
 // Official S4ShopUI: available, sold out, locked; then configured order.
 function compareShopGoods(a, b) {
@@ -142,7 +142,7 @@ function createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getSer
       params = { hires: [{ slot_index: slot, duration_id: duration.duration_id, target_gid: target.friend.gid }] };
     }
     if (action === 'interact') {
-      const shift = state.work.my_shift; if (!shift || Number(shift.end_at) <= now || state.work.interact_done || Number(shift.interact_count) >= Number(shift.interact_limit)) fail('当前班次不可互动');
+      const shift = state.work.my_shift; if (!shift || Number(shift.begin_at) > now || Number(shift.end_at) <= now || state.work.interact_done || Number(shift.interact_count) >= Number(shift.interact_limit)) fail('当前班次不可互动');
       const type = Number(input.interactionType); if (!catalog.MilkTeaInteractionType.some(x => x.interaction_id === type)) fail('互动类型无效');params = { target_gid: shift.employer.gid, interaction_type: type };
     }
     if (action === 'rank' || action === 'sales' || action === 'hireList' || action === 'shop' || action === 'work' || action === 'workshop') fail('只读动作请使用查询接口');
@@ -214,7 +214,16 @@ function createMilkTeaService({ types, sendMsgAsync, getBag, getBagItems, getSer
   }
   return { getMilkTea, operateMilkTea, milkTeaRecords };
 }
+function normalizeInteractionType(value) {
+  const type = Number(value);
+  return catalog.MilkTeaInteractionType.some(x => x.interaction_id === type) ? type : 1;
+}
+function automaticInteractionParams(state, value, now) {
+  const shift = state.work?.my_shift;
+  if (state.phase !== 'business' || !shift || Number(shift.begin_at) > now || Number(shift.end_at) <= now || state.work.interact_done || Number(shift.interact_count) >= Number(shift.interact_limit)) return null;
+  return { interactionType: normalizeInteractionType(value) };
+}
 function reserveMilkTeaFruit(itemId, enabled, now) {
   return enabled === true && phase(now) === 'business' && catalog.MilkTeaRecipeConfig.some(recipe => Number(recipe.fruit_item_id?.split(':')[0]) === Number(itemId));
 }
-module.exports = { createMilkTeaService, WINDOW, ACTIONS, AUTO_ACTIONS, phase, normalizeWireMaps, reserveMilkTeaFruit, compareShopGoods, normalizeHireOptions, selectHireCandidate };
+module.exports = { createMilkTeaService, WINDOW, ACTIONS, AUTO_ACTIONS, phase, normalizeWireMaps, reserveMilkTeaFruit, compareShopGoods, normalizeHireOptions, selectHireCandidate, normalizeInteractionType, automaticInteractionParams };

@@ -43,6 +43,8 @@ export interface AutomationConfig {
   milk_tea_upgrade?: boolean
   milk_tea_craft?: boolean
   milk_tea_boost?: boolean
+  milk_tea_interact?: boolean
+  milk_tea_interaction_type?: number
   milk_tea_hire?: boolean
   milk_tea_hire_duration?: number
   milk_tea_hire_talent?: number

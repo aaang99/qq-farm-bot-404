@@ -943,6 +943,10 @@ async function runStarActivityAutoClaims() {
                             durationId: options.milk_tea_hire_duration, talentId: options.milk_tea_hire_talent,
                         }) };
                     }
+                    if (action === 'interact') {
+                        params = require('../services/activity-milk-tea').automaticInteractionParams(state, getAutomation()?.milk_tea_interaction_type, require('../utils/utils').getServerTimeSec());
+                        if (!params) continue;
+                    }
                     if (action === 'cashier' && !(state.shop?.pending_rewards || []).some(x => Number(x.count) > 0)) continue;
                     if (action === 'craft' && !(state.recipes || []).some(recipe => recipe.unlocked && recipe.fruits?.length)) continue;
                     if (action === 'boost' && !(state.balances || []).some(item => String(item.id) === String(state.shop?.sales_item_id) && Number(item.count) > 0)) continue;

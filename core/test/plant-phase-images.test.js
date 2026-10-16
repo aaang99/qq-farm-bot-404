@@ -8,6 +8,34 @@ const {
     getMutantPlantImageByPhase,
     getPlantImageByPhase,
 } = require('../src/config/gameConfig');
+const { findSpinePhaseRegion } = require('../scripts/extract-plant-phase-images');
+
+test('森野黄金芽提取阶段整图，不能把成熟动画数字零件当成生长阶段', () => {
+    for (let phase = 2; phase <= 5; phase++) {
+        const normal = new Map([[`0${phase}`, {}], [`${phase}jie`, {}]]);
+        const mutant = new Map([[`0${phase}`, {}], [`pt_sz_${phase}`, {}]]);
+        assert.equal(findSpinePhaseRegion(normal, phase, 'Crop_9005', 'Crop_1029005'), `${phase}jie`);
+        assert.equal(findSpinePhaseRegion(mutant, phase, 'Plant_1028005', 'Crop_1028005'), `pt_sz_${phase}`);
+        assert.equal(findSpinePhaseRegion(new Map([['grow_02', {}]]), 2, 'Crop_9003', ''), 'grow_02');
+    }
+});
+
+test('森野黄金芽四个品种使用各自完整阶段图，不再把变异回退到普通版', () => {
+    const sources = require('../src/gameConfig/plant_images/milk-tea-phase-sources.json');
+    for (const id of [1029005, 1129005, 1028005, 1128005]) {
+        const asset = id === 1029005 ? 'Crop_9005' : `Plant_${id}`;
+        for (let phase = 2; phase <= 5; phase++) {
+            const url = getPlantImageByPhase(id, phase);
+            assert.equal(url, `/game-config/plant_images/${asset}/${phase}.png`);
+            const bytes = fs.readFileSync(path.join(__dirname, '..', 'src', url.replace('/game-config/', 'gameConfig/')));
+            // 错误零件只有几十像素；完整阶段图的双边均超过100像素。
+            assert.ok(bytes.readUInt32BE(16) > 100 && bytes.readUInt32BE(20) > 100, `${asset}/${phase}`);
+            const source = sources.items.find(item => item.asset === asset && item.phase === phase);
+            assert.equal(source.atlasRegion, [1028005, 1128005].includes(id) ? `pt_sz_${phase}` : `${phase}jie`);
+            assert.equal(source.file, `${asset}/${phase}.png`);
+        }
+    }
+});
 
 test('活动植物按阶段返回官方植物图片', () => {
     const image = getPlantImageByPhase(1021037, 6);
@@ -88,5 +116,42 @@ test('supplemental crops resolve local seed icons and every growth phase', () =>
             const bytes = fs.readFileSync(path.join(__dirname, '..', 'src', image.replace('/game-config/', 'gameConfig/')));
             assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
         }
+    }
+});
+
+test('新增图鉴作物及变异均提供土地阶段图和正确占地', () => {
+    const { getPlantByFruitId, getPlantBySeedId } = require('../src/config/gameConfig');
+    const fruits = [41435, 49005, 42254, 1040021, 1040525, 1040526, 1040527, 1040528, 1040165, 1040435, 1040529, 204011, 204012, 1049005];
+    for (const fruit of fruits) {
+        const plant = getPlantByFruitId(fruit);
+        assert.ok(plant, `果实 ${fruit} 的植物配置`);
+        assert.equal(plant.size, [49005, 204011, 204012, 1049005].includes(fruit) ? 2 : 1);
+        for (let phase = 1; phase <= 6; phase++) {
+            const url = getPlantImageByPhase(plant.id, phase);
+            assert.ok(url, `${plant.name} 阶段 ${phase}`);
+            const bytes = fs.readFileSync(path.join(__dirname, '..', 'src', url.replace('/game-config/', 'gameConfig/')));
+            assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+        }
+    }
+    assert.equal(getPlantBySeedId(29005).size, 2);
+    for (const [base, effects, target] of [
+        [1020525, [5], 1120525], [1020021, [5], 1120021],
+        [1020165, [5], 1120165], [1020435, [5], 1120435],
+        [1029005, [5], 1129005], [1029005, [17], 1028005],
+        [1029005, [5, 17], 1128005], [1028005, [5, 17], 1128005],
+    ]) {
+        assert.equal(getMutantDisplayPlantId(base, effects), target);
+        assert.equal(getMutantPlantImageByPhase(base, effects, 6), getPlantImageByPhase(target, 6));
+        assert.notEqual(getPlantImageByPhase(target, 6), getPlantImageByPhase(base, 6));
+    }
+});
+
+test('新增土地阶段素材来源清单和本地摘要一致', () => {
+    const crypto = require('node:crypto');
+    const root = path.join(__dirname, '../src/gameConfig/plant_images');
+    const sources = require('../src/gameConfig/plant_images/milk-tea-phase-sources.json');
+    for (const item of sources.items) {
+        assert.match(item.sourceUrl, /^https:\/\/cdn-resource\.nqf\.qq\.com\//);
+        assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root, item.file))).digest('hex'), item.sha256);
     }
 });

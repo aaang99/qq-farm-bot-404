@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import StrategySettingsTab from '@/components/settings/StrategySettingsTab.vue'
 import StrategyTimingPanel from '@/components/settings/StrategyTimingPanel.vue'
-import AccountDeviceProtocolCard from '@/components/settings/AccountDeviceProtocolCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
@@ -51,8 +50,9 @@ const milkTeaSettings = computed(() => [
         { key: 'milk_tea_upgrade', label: '自动升级店铺', detail: '营业额达到要求后升级' },
         { key: 'milk_tea_craft', label: '自动制作奶茶', detail: '加工全部已解锁配方对应的果实' },
         { key: 'milk_tea_boost', label: '自动使用宣传喇叭', detail: '使用背包中已有的宣传喇叭' },
-        { key: 'milk_tea_hire', label: '自动雇佣员工', detail: '按列表顺序选择首个符合类型的空闲好友' },
         { key: 'milk_tea_seed_buy', label: '自动购买已解锁种子', detail: '不使用钻石' },
+        { key: 'milk_tea_interact', label: '自动工作互动', detail: '每班按所选类型互动，已互动或下班后跳过' },
+        { key: 'milk_tea_hire', label: '自动雇佣员工', detail: '按列表顺序选择首个符合类型的空闲好友' },
       ]
     : []),
 ])
@@ -79,7 +79,7 @@ const selectedLandTypeCount = computed(() => Array.isArray(automation.value.auto
 const activityKeys = computed(() => [
   'star_solar_claim',
   ...(showMilkTeaActivity.value ? ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] : []),
-  ...(showMilkTeaBusiness.value ? ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy'] : []),
+  ...(showMilkTeaBusiness.value ? ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_interact', 'milk_tea_seed_buy'] : []),
   ...(showRainPoemActivity.value
     ? ['rain_poem_bottle_buy', 'rain_poem_weather_collect', 'rain_poem_summon_use', 'rain_poem_prank_use', 'rain_poem_research_unlock']
     : []),
@@ -306,7 +306,11 @@ watch(() => props.currentAccountId, loadQixiFriends)
       请先选择账号
     </div>
     <template v-else>
-
+      <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <span class="text-gray-700 font-medium dark:text-gray-300">账号设置</span>
+        <span class="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+        <span>{{ currentAccountName ? `正在配置：${currentAccountName}` : '请先在账号管理中选择账号' }}</span>
+      </div>
 
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
@@ -326,6 +330,7 @@ watch(() => props.currentAccountId, loadQixiFriends)
               </div>
             </div>
             <BaseSwitch
+              :aria-label="`${info.title}自动化`"
               :model-value="moduleEnabled(key as ModuleKey)"
               :disabled="saving"
               @update:model-value="setModuleEnabled(key as ModuleKey, !!$event)"
@@ -352,17 +357,11 @@ watch(() => props.currentAccountId, loadQixiFriends)
             </BaseButton>
           </div>
         </article>
-
-        <!-- 账号专属：自定义设备登录卡片 (排列在卡片最后一位) -->
-        <AccountDeviceProtocolCard
-          :current-account-id="props.currentAccountId"
-          :current-account-name="props.currentAccountName"
-        />
       </div>
     </template>
 
     <Teleport to="body">
-      <div v-if="activeModule && activeInfo" class="fixed inset-0 z-[10000] grid place-items-center overflow-y-auto bg-gray-950/60 p-3 backdrop-blur-[2px] sm:p-6" @click.self="cancel">
+      <div v-if="activeModule && activeInfo" class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-gray-950/45 p-3 backdrop-blur-[2px] sm:p-6" @click.self="cancel">
         <section class="max-h-[94vh] max-w-4xl w-full flex flex-col overflow-hidden border border-gray-200 rounded-lg bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-800">
           <header class="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4 dark:border-gray-700 sm:px-6">
             <div class="min-w-0 flex items-start gap-3">
@@ -715,33 +714,43 @@ watch(() => props.currentAccountId, loadQixiFriends)
                 <h3 class="mb-4 text-sm text-gray-900 font-semibold dark:text-gray-100">
                   奶茶热销中
                 </h3>
-                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  <div v-for="setting in milkTeaSettings" :key="setting.key" class="min-w-0 flex items-center justify-between gap-4 border border-amber-100 rounded-lg bg-white/80 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900/40">
-                    <div class="min-w-0">
-                      <div :id="`milk-tea-setting-${setting.key}`" class="text-sm text-gray-800 font-medium leading-5 dark:text-gray-200">
-                        {{ setting.label }}
+                <div class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+                  <div v-for="setting in milkTeaSettings" :key="setting.key" class="min-w-0 border border-amber-100 rounded-lg bg-white/80 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-900/40">
+                    <div class="flex items-center justify-between gap-4">
+                      <div class="min-w-0">
+                        <div :id="`milk-tea-setting-${setting.key}`" class="text-sm text-gray-800 font-medium leading-5 dark:text-gray-200">
+                          {{ setting.label }}
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 leading-5 dark:text-gray-400">
+                          {{ setting.detail }}
+                        </p>
                       </div>
-                      <p class="mt-1 text-xs text-gray-500 leading-5 dark:text-gray-400">
-                        {{ setting.detail }}
-                      </p>
+                      <BaseSwitch v-model="automation.automation[setting.key]" class="shrink-0" :aria-labelledby="`milk-tea-setting-${setting.key}`" />
                     </div>
-                    <BaseSwitch v-model="automation.automation[setting.key]" class="shrink-0" :aria-labelledby="`milk-tea-setting-${setting.key}`" />
+                    <div v-if="setting.key === 'milk_tea_interact' && automation.automation.milk_tea_interact" class="mt-3 border-t border-amber-100 pt-3 dark:border-gray-700">
+                      <label class="block text-xs text-gray-600 dark:text-gray-400">互动类型
+                        <select v-model.number="automation.automation.milk_tea_interaction_type" class="mt-1.5 w-full border border-gray-200 rounded-md bg-white px-2.5 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+                          <option :value="1">宣传推广</option><option :value="2">花式摇杯</option><option :value="3">招牌试饮</option><option :value="4">划水摸鱼（可能工资减半）</option><option :value="5">申请涨薪（可能工资减半）</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div v-if="setting.key === 'milk_tea_hire' && automation.automation.milk_tea_hire" class="mt-3 border-t border-amber-100 pt-3 dark:border-gray-700">
+                      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <label class="block text-xs text-gray-600 dark:text-gray-400">雇佣时长
+                          <select v-model.number="automation.automation.milk_tea_hire_duration" class="mt-1.5 w-full border border-gray-200 rounded-md bg-white px-2.5 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+                            <option :value="1">4 小时</option><option :value="2">12 小时</option><option :value="3">24 小时</option>
+                          </select>
+                        </label>
+                        <label class="block text-xs text-gray-600 dark:text-gray-400">雇佣类型
+                          <select v-model.number="automation.automation.milk_tea_hire_talent" class="mt-1.5 w-full border border-gray-200 rounded-md bg-white px-2.5 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+                            <option :value="0">任意好友</option><option :value="9001">金牌销售</option><option :value="9002">金牌宣传</option><option :value="9003">金牌服务</option><option :value="9004">实习员工（默默搬砖）</option>
+                          </select>
+                        </label>
+                      </div>
+                      <p class="mt-2 text-xs text-gray-500 leading-5 dark:text-gray-400">指定类型无空闲好友时，依次选择其他空闲好友、实习员工；均不可用则等待下次检查。时长或奶茶券不足时跳过。</p>
+                    </div>
                   </div>
                 </div>
-                <div v-if="showMilkTeaBusiness" class="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label class="text-sm">雇佣时长
-                    <select v-model.number="automation.automation.milk_tea_hire_duration" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
-                      <option :value="1">4 小时</option><option :value="2">12 小时</option><option :value="3">24 小时</option>
-                    </select>
-                  </label>
-                  <label class="text-sm">雇佣类型
-                    <select v-model.number="automation.automation.milk_tea_hire_talent" class="mt-1 w-full rounded border p-2 dark:bg-gray-900">
-                      <option :value="0">任意好友</option><option :value="9001">金牌销售</option><option :value="9002">金牌宣传</option><option :value="9003">金牌服务</option><option :value="9004">实习员工（默默搬砖）</option>
-                    </select>
-                  </label>
-
-                </div>
-                <p v-if="showMilkTeaBusiness" class="mt-2 text-xs text-gray-500">指定类型无空闲好友时，依次选择其他空闲好友、实习员工；均不可用则等待下次检查。时长或奶茶券不足时跳过。</p>
               </section>
               <section v-if="showPetDiaryActivity" class="border border-violet-100 rounded-lg p-4 space-y-3 dark:border-violet-900/40">
                 <div>

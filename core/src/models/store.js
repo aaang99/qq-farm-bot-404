@@ -302,6 +302,8 @@ const DEFAULT_AUTOMATION = {
     milk_tea_craft: false,
     milk_tea_boost: false,
     milk_tea_hire: false,
+    milk_tea_interact: false,
+    milk_tea_interaction_type: 1,
     milk_tea_hire_duration: 1,
     milk_tea_hire_talent: 0,
     milk_tea_seed_buy: false,
@@ -378,7 +380,7 @@ const SHARE_REWARD_AUTOMATION_KEYS = ['share_reward_share', 'share_reward_daily'
 // 否则前端会显示后端已强制关闭的开关。
 const TIMED_ACTIVITY_AUTOMATION_GROUPS = [
     { startTime: 1792029600, endTime: 1794844799, keys: ['mall_coupon_gift_buy', 'milk_tea_cashier', 'milk_tea_wages', 'milk_tea_share_daily', 'milk_tea_share_rewards', 'milk_tea_fund_rewards'] },
-    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_seed_buy'] },
+    { startTime: 1792029600, endTime: 1794671998, keys: ['milk_tea_upgrade', 'milk_tea_craft', 'milk_tea_boost', 'milk_tea_hire', 'milk_tea_interact', 'milk_tea_seed_buy'] },
     { startTime: 1790179200, endTime: 1791388799, keys: WISH_SIGN_AUTOMATION_KEYS },
     { startTime: 1790179200, endTime: 1791820799, keys: SHARE_REWARD_AUTOMATION_KEYS },
     {
@@ -814,6 +816,8 @@ function normalizeAccountConfig(raw, fallbackConfig = accountFallbackConfig) {
             } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
                 const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
                 cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
+            } else if (key === 'milk_tea_interaction_type') {
+                cfg.automation[key] = require('../services/activity-milk-tea').normalizeInteractionType(value);
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;
@@ -1321,6 +1325,8 @@ function applyConfigSnapshot(patch = {}, opts = {}) {
             } else if (['milk_tea_hire_duration', 'milk_tea_hire_talent'].includes(key)) {
                 const field = { milk_tea_hire_duration: 'durationId', milk_tea_hire_talent: 'talentId' }[key];
                 cfg.automation[key] = require('../services/activity-milk-tea').normalizeHireOptions({ [field]: value })[field];
+            } else if (key === 'milk_tea_interaction_type') {
+                cfg.automation[key] = require('../services/activity-milk-tea').normalizeInteractionType(value);
             } else if (key === 'wish_sign_choice') {
                 const choice = Number(value);
                 cfg.automation[key] = Number.isInteger(choice) && choice >= 1 && choice <= 6 ? choice : 1;

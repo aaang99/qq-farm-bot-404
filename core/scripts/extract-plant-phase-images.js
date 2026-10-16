@@ -167,7 +167,7 @@ function getPhaseResources(config, assets) {
     const resourcePath = pathInfo && pathInfo[0];
     // Crop_*_Seed 是背包物品图标；地块种子阶段由 model/v4/zhongzi 统一提供。
     // 各作物的地上生长资源从 _2 开始，_2.._6 对应发芽到成熟，_7 是枯萎。
-    const match = /^model\/v4\/(Crop_\d+)_([2-7])$/.exec(resourcePath || '');
+    const match = /^model\/v4\/((?:gold\/)?Crop_\d+)_([2-7])$/.exec(resourcePath || '');
     if (!match || !wanted.has(match[1])) continue;
     const uuidIndex = Number(uuidIndexText);
     const uuid = decodeUuid(config.uuids && config.uuids[uuidIndex]);
@@ -224,7 +224,7 @@ function downloadAstc(resource, configUrl, targetDir) {
   if (!resource.nativeHash) return null;
   const bundleBase = configUrl.replace(/config\.[^/]+\.json$/, '');
   const url = `${bundleBase}native/${resource.uuid.slice(0, 2)}/${resource.uuid}.${resource.nativeHash}.astc`;
-  const target = path.join(targetDir, `${resource.asset}-${resource.phase}.astc`);
+  const target = path.join(targetDir, `${resource.asset.replace(/\//g, '-')}-${resource.phase}.astc`);
   const result = spawnSync('curl', ['-L', '--fail', '--silent', '--show-error', '--output', target, url], { stdio: 'inherit' });
   return result.status === 0 && fs.existsSync(target) ? { url, localPath: target, lastTime: Date.now() } : null;
 }
@@ -380,6 +380,18 @@ function extractAtlasRegion(texturePath, region, outputPath) {
   if (result.status !== 0) throw new Error(`Spine 图集拆图失败：${result.stderr || outputPath}`);
 }
 
+function findSpinePhaseRegion(regions, phase, assetName, spineCropName) {
+  const names = phase === 7
+    ? ['kuwei', '07', 'kuwei_tiangong', 'kuwei_tiangong2']
+    // 森野黄金芽的数字区块是成熟动画零件，阶段整图必须优先。
+    : [`${phase}jie`, `pt_sz_${phase}`, `grow_0${phase}`, `grow_${phase - 1}`,
+        `0${phase}`, String(phase), `${assetName}_${phase}`, `${spineCropName}_${phase}`];
+  return names.find(name => regions.has(name))
+    || (phase >= 2 && phase <= 5
+      ? [...regions.keys()].find(name => new RegExp(`^Crop_\\d+_${phase}$`).test(name))
+      : undefined);
+}
+
 function exportCachedSpinePlants(entries, output, manifest, wantedAssets) {
   const plants = filterInvalidPlants([
     ...JSON.parse(fs.readFileSync(path.join(coreRoot, 'src', 'gameConfig', 'Plant.json'), 'utf8')),
@@ -395,19 +407,9 @@ function exportCachedSpinePlants(entries, output, manifest, wantedAssets) {
     if (!wantedAssets.has(assetName) && !wantedAssets.has(`Plant_${plant.id}`)) continue;
     const regions = parseAtlasRegions(spineImport.atlasText);
     const spineCropName = `Crop_${String(plant.all_state_spine || '').split('/').pop().replace(/^\D+/, '')}`;
-    const phaseRegions = new Map([
-      // Spine 图集里的 zhongzi 是背包种子图标；阶段1没有地上植物贴图。
-      [2, ['grow_02', 'grow_1', '02', '2', `${assetName}_2`, `${spineCropName}_2`]],
-      [3, ['grow_03', 'grow_2', '03', '3', `${assetName}_3`, `${spineCropName}_3`]],
-      [4, ['grow_04', 'grow_3', '04', '4', `${assetName}_4`, `${spineCropName}_4`]],
-      [5, ['grow_05', 'grow_4', '05', '5', `${assetName}_5`, `${spineCropName}_5`]],
-      [7, ['kuwei', '07', 'kuwei_tiangong', 'kuwei_tiangong2']],
-    ]);
-    for (const [phase, regionNames] of phaseRegions) {
-      const regionName = regionNames.find(name => regions.has(name))
-        || (phase >= 2 && phase <= 5
-          ? [...regions.keys()].find(name => new RegExp(`^Crop_\\d+_${phase}$`).test(name))
-          : null);
+    // zhongzi 是背包种子图标，不用于阶段1。
+    for (const phase of [2, 3, 4, 5, 7]) {
+      const regionName = findSpinePhaseRegion(regions, phase, assetName, spineCropName);
       const region = regionName && regions.get(regionName);
       if (!region) continue;
       const relative = path.join(assetName, `${phase}.png`);
@@ -418,7 +420,8 @@ function exportCachedSpinePlants(entries, output, manifest, wantedAssets) {
       console.log(`已导出 Spine：${plant.name} ${regionName} -> ${relative}`);
     }
     const seedImageDir = path.join(coreRoot, 'src', 'gameConfig', 'seed_images_named');
-    const matureIcon = Number(plant.seed_id) > 0
+    const fruitIcon = path.join(seedImageDir, `${plant.fruit?.id || plant.fruit_id}.png`);
+    const matureIcon = fs.existsSync(fruitIcon) ? fruitIcon : Number(plant.seed_id) > 0
       ? fs.readdirSync(seedImageDir)
         .filter(name => name.startsWith(`${plant.seed_id}_`) && name.includes(assetName) && /_Seed\.png$/i.test(name))
         .map(name => path.join(seedImageDir, name))[0] || ''
@@ -435,6 +438,16 @@ function exportCachedSpinePlants(entries, output, manifest, wantedAssets) {
       manifest[assetName][6] = `/game-config/plant_images/${relative.split(path.sep).join('/')}`;
       exported += 1;
       console.log(`已导出 Spine：${plant.name} 成熟静态回退帧 -> ${relative}`);
+    }
+    // 分件活动变异没有独立早期整图，显式复用基础作物的生长阶段。
+    const fallback = manifest[plant.phase_fallback_asset];
+    if (fallback) {
+      for (const phase of [2, 3, 4, 5]) {
+        if (!manifest[assetName]?.[phase] && fallback[phase]) {
+          manifest[assetName] ||= {};
+          manifest[assetName][phase] = fallback[phase];
+        }
+      }
     }
   }
   return exported;
@@ -523,9 +536,13 @@ function main() {
   console.log(`清单：${manifestPath}`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error && error.stack || error);
-  process.exitCode = 1;
+module.exports = { parseAtlasRegions, findSpinePhaseRegion, exportCachedSpinePlants };
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error && error.stack || error);
+    process.exitCode = 1;
+  }
 }

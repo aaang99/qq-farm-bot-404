@@ -246,7 +246,7 @@ const activityCards = computed(() => {
   })
   cards.push({ permanent: true, key: 'solar-terms', activityIds: [], adaptedKey: null,
     title: '节令小札', description: '查看各节令赠礼与领取状态', icon: 'i-carbon-notebook',
-    image: '', imagePosition: 'center', window: { startMs: 0, endMs: 0 },
+    image: '/activity/solar-terms/banner.png', imagePosition: 'center 66%', window: { startMs: 0, endMs: 0 },
     updatedMs: Date.parse('2026-10-15T00:00:00+08:00'), status: 'active', pending: false,
     backgroundStyle: { background: '#385c46' },
   })

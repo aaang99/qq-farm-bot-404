@@ -80,6 +80,17 @@ const remaining = computed(() => {
 })
 const date = (sec: number) => new Date(sec * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
 const duration = (sec: number) => `${Math.floor(Math.max(0, sec) / 3600).toString().padStart(2, '0')}:${Math.floor(Math.max(0, sec) % 3600 / 60).toString().padStart(2, '0')}`
+const workHours = (sec: unknown) => `${Math.round(Number(sec || 0) / 3600 * 10) / 10}小时`
+function interactionReward(interact: any) {
+  if (!Number(interact?.type))
+    return '无互动'
+  const effect = interact.friend
+  if (Number(effect?.taste_cups) > 0)
+    return `奶茶 +${effect.taste_cups}`
+  if (Number(effect?.bonus_amount) > 0)
+    return `奶茶券 +${effect.bonus_amount}`
+  return `${state.value?.interactions?.find((x: any) => Number(x.interaction_id) === Number(interact.type))?.name || '已互动'} · ${interact.success ? '成功' : '未成功'}`
+}
 async function refresh() {
   if (loading.value || busy.value || !accounts.currentAccountId || !isWithinActivityWindowMs(MILK_TEA_ACTIVITY_WINDOW))
     return
@@ -311,30 +322,52 @@ onUnmounted(() => {
         </div>
       </main>
       <main v-else class="paper work-paper" :style="{ backgroundImage: `url(${img('img_s4_commonBg')})` }">
-        <div class="work-scene">
-          <img :src="img('img_S4MyJob_bg_3')" alt=""><div class="work-sign" :style="{ backgroundImage: `url(${img('img_S4MyJob_bg_4')})` }">
-            {{ state.work.my_shift ? '工作中' : '空闲中' }}
+        <section v-if="state.work.my_shift" class="shift-card">
+          <h3>本次兼职信息</h3>
+          <span class="shift-status">兼职中</span>
+          <div class="job-details">
+            <div class="employer-card">
+              <strong>你的老板是：</strong>
+              <img v-if="state.work.my_shift.employer?.avatar" :src="state.work.my_shift.employer.avatar" alt="老板头像">
+              <span v-else class="employer-placeholder">店</span>
+              <b>{{ state.work.my_shift.employer?.name || '老板' }}</b>
+              <small>▰ {{ state.work.my_shift.shop_name }}</small>
+            </div>
+            <div class="job-facts">
+              <div class="shift-time"><img :src="img('icon_S4MyJob_time')" alt="">剩余{{ duration(Number(state.work.my_shift.end_at) - now / 1000) }}<progress :value="Math.max(0, Number(state.work.my_shift.end_at) - now / 1000)" :max="Math.max(1, Number(state.work.my_shift.end_at) - Number(state.work.my_shift.begin_at))" /></div>
+              <p><span>你的特长</span><b>{{ state.work.my_shift.talent_name }}</b></p>
+              <p><span>预计工资</span><b><img :src="img('icon_s4_ticket')" alt="奶茶券"> +{{ state.work.my_shift.wage_total }}</b></p>
+              <p><span>{{ state.interactions.find((x: any) => Number(x.interaction_id) === Number(state.work.my_shift.interact?.type))?.name || '互动收益' }}</span><b>{{ interactionReward(state.work.my_shift.interact) }}</b></p>
+            </div>
           </div>
-        </div>
-        <template v-if="state.work.my_shift">
-          <h3>{{ state.work.my_shift.shop_name }}</h3><p>{{ state.work.my_shift.talent_name }} · {{ duration(Number(state.work.my_shift.end_at) - now / 1000) }}后下班</p><div class="interactions">
-            <button v-for="interaction in state.interactions" :key="interaction.interaction_id" class="gold-button" :disabled="busy || state.work.interact_done || state.phase !== 'business'" @click="act('interact', { interactionType: interaction.interaction_id })">
+          <div v-if="!state.work.interact_done && Number(state.work.my_shift.interact_count) < Number(state.work.my_shift.interact_limit) && Number(state.work.my_shift.end_at) > now / 1000" class="interactions">
+            <button v-for="interaction in state.interactions" :key="interaction.interaction_id" class="gold-button" :disabled="busy || loading || state.phase !== 'business'" @click="act('interact', { interactionType: interaction.interaction_id })">
               {{ interaction.name }}
             </button>
           </div>
-        </template>
-        <button v-else class="gold-button invite" @click="open('invite')">
-          ➤ 邀请好友雇佣我
-        </button>
-        <h3 class="record-title">
-          兼职记录
-        </h3><div v-if="!state.work.slips.length" class="empty-work">
+        </section>
+        <div v-else class="work-idle">
+          <img :src="img('img_S4MyJob_bg_3')" alt="">
+          <button class="gold-button invite" :disabled="busy || loading" @click="open('invite')">➤ 邀请好友雇佣我</button>
+        </div>
+        <h3 class="record-title">兼职记录</h3>
+        <div v-if="!state.work.slips.length" class="empty-work">
           <img :src="img('img_s4_null1')" alt=""><p>暂无工作记录</p>
-        </div><div v-for="slip in state.work.slips" :key="slip.shift_id" class="work-record">
-          <strong>{{ slip.shop_name }}</strong><p>{{ date(Number(slip.begin_at)) }} — {{ date(Number(slip.end_at)) }}</p>
-        </div><button v-if="state.summary.has_unclaimed_wage" class="gold-button" :disabled="busy" @click="act('wages')">
-          领取工资
-        </button>
+        </div>
+        <section v-for="slip in state.work.slips" :key="slip.shift_id" class="work-record job-details">
+          <div class="employer-card">
+            <strong>你的老板是：</strong>
+            <img v-if="slip.employer?.avatar" :src="slip.employer.avatar" alt="老板头像">
+            <span v-else class="employer-placeholder">店</span>
+            <b>{{ slip.employer?.name || '老板' }}</b><small>▰ {{ slip.shop_name }}</small>
+          </div>
+          <div class="job-facts">
+            <p><span>工作时长</span><b>{{ workHours(slip.work_sec) }}</b></p>
+            <p><span>兼职工资</span><b><img :src="img('icon_s4_ticket')" alt="奶茶券"> +{{ slip.wages?.final_wage ?? '—' }}</b></p>
+            <p><span>互动收益</span><b>{{ interactionReward(slip.interact) }}</b></p>
+          </div>
+        </section>
+        <button v-if="state.summary.has_unclaimed_wage" class="gold-button" :disabled="busy || loading" @click="act('wages')">领取工资</button>
       </main>
       <nav class="milk-tabs" :style="{ backgroundImage: `url(${img('img_s4Main_bottomBg')})` }">
         <button v-for="(t, i) in (['shop', 'exchange', 'work'] as const)" :key="t" :class="{ active: tab === t }" @click="tab = t">
@@ -1062,11 +1095,34 @@ onUnmounted(() => {
 .empty-work img {
   width: 24%;
 }
-.work-record {
-  border-bottom: 1px dashed #a97d53;
-  font-size: 2.7cqw;
-  padding: 10px;
+.shift-card, .work-record {
+  position: relative;
+  border: 2px solid #e7cfaa;
+  border-radius: 3cqw;
+  background: #fff9e7e8;
+  padding: 2.5cqw;
+  margin: 2cqw 0;
 }
+.shift-card h3 { margin: 0 0 3cqw; font-size: 3.5cqw; color: #aa875a; }
+.shift-status { position: absolute; right: -2cqw; top: -2cqw; padding: 1cqw 3cqw; background: #785239; color: #f9e6bc; transform: rotate(9deg); font-size: 3cqw; }
+.job-details { display: grid; grid-template-columns: 39% minmax(0, 1fr); gap: 3cqw; }
+.employer-card { display: flex; align-items: center; flex-direction: column; overflow: hidden; border: 1px solid #e6caa1; border-radius: 1.5cqw; background: #f6eace; font-size: 3cqw; }
+.employer-card strong { width: 100%; padding: 1cqw 0; border-bottom: 1px solid #e6caa1; color: #ab8758; font-size: 2.6cqw; }
+.employer-card > img, .employer-placeholder { width: 12cqw; height: 12cqw; border-radius: 50%; object-fit: cover; margin: 2cqw 0 1cqw; border: 2px solid #e6caa1; }
+.employer-placeholder { display: grid; place-items: center; }
+.employer-card b, .employer-card small { max-width: 100%; overflow-wrap: anywhere; padding: .5cqw 1cqw; }
+.employer-card small { font-size: 2.4cqw; margin-top: auto; }
+.job-facts { min-width: 0; align-self: center; }
+.job-facts p { display: flex; align-items: center; justify-content: space-between; gap: 1cqw; margin: 1.5cqw 0; font-size: 2.8cqw; }
+.job-facts p > span { flex-shrink: 0; background: #f6eace; border: 1px solid #e6caa1; border-radius: 1cqw; padding: 1cqw; }
+.job-facts b { overflow-wrap: anywhere; }
+.job-facts b img { width: 4cqw; vertical-align: middle; }
+.shift-time { display: flex; align-items: center; gap: .5cqw; font-size: 2.5cqw; font-weight: bold; flex-wrap: wrap; }
+.shift-time img { width: 2.5cqw; }
+.shift-time progress { width: 100%; height: 1.8cqw; accent-color: #f8cd58; }
+.work-idle > img { width: 90%; }
+.shift-card .interactions { margin-top: 2cqw; }
+.shift-card .interactions button { font-size: 2.6cqw; }
 .interactions {
   display: flex;
   flex-wrap: wrap;
