@@ -226,9 +226,9 @@ function openAddAccount() {
   closeDropdown()
 }
 
-function openRemarkModal(acc: any) {
-  accountToEdit.value = acc
-  showRemarkModal.value = true
+function openEditAccount(acc: any) {
+  accountToEdit.value = { ...acc }
+  showAccountModal.value = true
   closeDropdown()
 }
 
@@ -341,8 +341,8 @@ async function handleAccountSaved(targetId?: string) {
               </div>
               <button
                 class="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white/60 hover:text-blue-500"
-                title="修改备注"
-                @click.stop="openRemarkModal(acc)"
+                title="更新账号"
+                @click.stop="openEditAccount(acc)"
               >
                 <div class="i-carbon-edit text-xs" />
               </button>
