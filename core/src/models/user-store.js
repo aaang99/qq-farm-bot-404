@@ -250,17 +250,23 @@ function saveCards() {
 
 function initDefaultAdmin() {
     loadUsers();
-    const adminExists = users.find(u => u.username === 'admin');
-    if (!adminExists) {
+    // 只要系统已有任何管理员账号（无论是 admin 还是自定义管理员如 17630803121），绝不能再自动新建 'admin' 账号！
+    const hasAnyAdmin = users.some(u => u.role === 'admin' || u.role === 'super_admin');
+    if (!hasAnyAdmin && users.length === 0) {
         const defaultPassword = 'admin';
         users.push({
             username: 'admin',
             password: hashPassword(defaultPassword),
             role: 'admin',
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            accountLimit: 2,
+            card: {
+                days: -1,
+                expiresAt: null
+            }
         });
         saveUsers();
-        console.log('[用户系统] 已创建默认管理员账号，默认密码: admin');
+        console.log('[用户系统] 系统暂无管理员，已创建默认管理员账号，默认密码: admin');
     }
 }
 
@@ -538,6 +544,28 @@ function editUser(oldUsername, updates) {
             return { ok: false, error: '用户名已存在' };
         }
         user.username = updates.newUsername;
+
+        // 级联更新已用卡密所有者记录
+        loadCards();
+        let cardsChanged = false;
+        for (const c of cards) {
+            if (c.usedBy === oldUsername) {
+                c.usedBy = updates.newUsername;
+                cardsChanged = true;
+            }
+        }
+        if (cardsChanged) saveCards();
+
+        // 级联更新公开卡密领取记录
+        loadCardClaimRecords();
+        let claimsChanged = false;
+        for (const r of cardClaimRecords) {
+            if (r.username === oldUsername) {
+                r.username = updates.newUsername;
+                claimsChanged = true;
+            }
+        }
+        if (claimsChanged) saveCardClaimRecords();
     }
 
     if (updates.password) {

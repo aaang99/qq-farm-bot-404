@@ -374,6 +374,18 @@ function createDataProvider(deps) {
             }
         },
 
+        renameRuntimeUser: (oldUsername, newUsername) => {
+            const oldU = String(oldUsername || '').trim();
+            const newU = String(newUsername || '').trim();
+            if (!oldU || !newU) return;
+            for (const id in workers) {
+                const wrk = workers[id];
+                if (wrk && wrk.username === oldU) {
+                    wrk.username = newU;
+                }
+            }
+        },
+
         // ========== 账号管理 ==========
         getAccounts: () => {
             const data = getAccounts();

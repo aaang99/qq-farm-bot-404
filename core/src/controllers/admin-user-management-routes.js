@@ -4,6 +4,8 @@ function registerAdminUserManagementRoutes({
   app,
   adminRequired,
   invalidateAdminSessions,
+  updateAdminSessions,
+  store,
   provider,
   getAccountsForUser,
 }) {
@@ -154,6 +156,14 @@ function registerAdminUserManagementRoutes({
     try {
       const result = userStore.clearExpiredUsers();
       if (result.ok && result.deletedCount > 0) {
+        for (const u of result.deletedUsers) {
+          if (store && typeof store.deleteAccountsByUser === 'function') {
+            store.deleteAccountsByUser(u);
+          }
+          if (store && typeof store.deleteUserConfig === 'function') {
+            store.deleteUserConfig(u);
+          }
+        }
         if (typeof invalidateAdminSessions === "function") {
           invalidateAdminSessions((session) =>
             result.deletedUsers.includes(session.username)
@@ -195,6 +205,26 @@ function registerAdminUserManagementRoutes({
       if (!result.ok) {
         return res.status(400).json(result);
       }
+
+      // 核心资产绑定：如果修改了用户名，必须同步将挂机账号资产、用户专属配置全部原子迁移到新用户名下！
+      if (newUsername && newUsername !== username) {
+        if (store && typeof store.renameUserAccounts === 'function') {
+          store.renameUserAccounts(username, newUsername);
+        }
+        if (provider && typeof provider.renameRuntimeUser === 'function') {
+          provider.renameRuntimeUser(username, newUsername);
+        }
+        // 同步更新所有在线会话中的用户名，防止立即掉权
+        if (typeof updateAdminSessions === 'function') {
+          updateAdminSessions(
+            (session) => session.username === username,
+            (session) => {
+              session.username = newUsername;
+            }
+          );
+        }
+      }
+
       res.json({ ok: true, data: result.user });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -211,6 +241,13 @@ function registerAdminUserManagementRoutes({
       const result = userStore.deleteUser(username, true);
       if (!result.ok) {
         return res.status(400).json(result);
+      }
+      // 联动清理该用户遗留的所有挂机账号与配置
+      if (store && typeof store.deleteAccountsByUser === 'function') {
+        store.deleteAccountsByUser(username);
+      }
+      if (store && typeof store.deleteUserConfig === 'function') {
+        store.deleteUserConfig(username);
       }
       if (typeof invalidateAdminSessions === "function") {
         invalidateAdminSessions((session) => session.username === username);

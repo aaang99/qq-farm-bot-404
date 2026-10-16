@@ -436,6 +436,8 @@ function startAdminServer(dataProvider) {
     app,
     adminRequired: adminRouteHelpers.adminRequired,
     invalidateAdminSessions,
+    updateAdminSessions,
+    store,
     provider,
     getAccountsForUser,
   });

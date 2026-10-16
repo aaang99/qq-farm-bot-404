@@ -1720,6 +1720,47 @@ function deleteAllAccounts() {
     return { deletedCount: 0, deletedIds: [] };
 }
 
+function renameUserAccounts(oldUsername, newUsername) {
+    const oldU = String(oldUsername || '').trim();
+    const newU = String(newUsername || '').trim();
+    if (!oldU || !newU || oldU === newU) return { renamedCount: 0 };
+
+    const data = loadAccounts();
+    let renamedCount = 0;
+    for (const a of data.accounts) {
+        if (a.username === oldU) {
+            a.username = newU;
+            renamedCount++;
+        }
+    }
+    if (renamedCount > 0) {
+        saveAccounts(data);
+    }
+
+    // 迁移用户专属的配置（默认策略、下线提醒、设备协议）
+    let configChanged = false;
+    if (globalConfig.userDefaultAccountPlans && globalConfig.userDefaultAccountPlans[oldU]) {
+        globalConfig.userDefaultAccountPlans[newU] = globalConfig.userDefaultAccountPlans[oldU];
+        delete globalConfig.userDefaultAccountPlans[oldU];
+        configChanged = true;
+    }
+    if (globalConfig.userOfflineReminders && globalConfig.userOfflineReminders[oldU]) {
+        globalConfig.userOfflineReminders[newU] = globalConfig.userOfflineReminders[oldU];
+        delete globalConfig.userOfflineReminders[oldU];
+        configChanged = true;
+    }
+    if (globalConfig.userDeviceProtocols && globalConfig.userDeviceProtocols[oldU]) {
+        globalConfig.userDeviceProtocols[newU] = globalConfig.userDeviceProtocols[oldU];
+        delete globalConfig.userDeviceProtocols[oldU];
+        configChanged = true;
+    }
+    if (configChanged) {
+        saveGlobalConfig();
+    }
+
+    return { renamedCount };
+}
+
 function getAccountsByUser(username) {
     const data = loadAccounts();
     if (!username) return data;
@@ -2109,6 +2150,7 @@ module.exports = {
     setAdminPasswordHash,
     getAccountsByUser,
     deleteAccountsByUser,
+    renameUserAccounts,
     deleteUserConfig,
     getUserDefaultAccountPlan,
     setUserDefaultAccountPlan,
