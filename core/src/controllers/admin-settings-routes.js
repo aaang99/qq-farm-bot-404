@@ -454,6 +454,57 @@ function registerAdminSettingsRoutes({
       res.status(500).json({ ok: false, error: error.message });
     }
   });
+
+  // ============ 系统公告 API ============
+  app.get("/api/announcement", (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      const username = currentUser ? currentUser.username : '';
+      const data = store.getAnnouncement ? store.getAnnouncement() : { content: '', enabled: false };
+      const unread = username && store.shouldShowAnnouncement ? store.shouldShowAnnouncement(username) : false;
+      res.json({
+        ok: true,
+        data: {
+          ...data,
+          unread: data.enabled !== false && !!data.content && unread
+        }
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  app.post("/api/announcement/read", (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      if (!currentUser) {
+        return res.status(401).json({ ok: false, error: "未登录" });
+      }
+      if (store.markAnnouncementRead) {
+        store.markAnnouncementRead(currentUser.username);
+      }
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  app.post("/api/admin/announcement", (req, res) => {
+    const currentUser = req.currentUser;
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
+      return res.status(403).json({ ok: false, error: "无权操作" });
+    }
+    try {
+      const { content, title, showOnce, enabled } = req.body || {};
+      if (!store.setAnnouncement) {
+        return res.status(500).json({ ok: false, error: "服务不可用" });
+      }
+      const data = store.setAnnouncement(content, showOnce, title, enabled);
+      res.json({ ok: true, data, message: "系统公告已更新并发布" });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
 }
 
 module.exports = { registerAdminSettingsRoutes };

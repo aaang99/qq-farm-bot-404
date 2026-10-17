@@ -4,6 +4,7 @@ import { onMounted, onUnmounted } from 'vue'
 import MysteryMerchantBanner from '@/components/shop/MysteryMerchantBanner.vue'
 import Sidebar from '@/components/Sidebar.vue'
 import TopAccountMenu from '@/components/TopAccountMenu.vue'
+import AnnouncementBell from '@/components/AnnouncementBell.vue'
 import { useAppStore } from '@/stores/app'
 
 const appStore = useAppStore()
@@ -55,8 +56,9 @@ onUnmounted(() => {
           >
         </div>
 
-        <!-- 右侧：头像胶囊 -->
-        <div class="flex items-center z-10">
+        <!-- 右侧：消息提醒铃铛 + 头像胶囊 -->
+        <div class="flex items-center gap-2 z-10">
+          <AnnouncementBell />
           <TopAccountMenu />
         </div>
       </header>

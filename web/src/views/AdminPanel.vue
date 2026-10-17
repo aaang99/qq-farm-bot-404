@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import api from '@/api'
 import AdminSystemPanel from '@/components/admin/AdminSystemPanel.vue'
 import AdminSmtpConfigCard from '@/components/admin/AdminSmtpConfigCard.vue'
+import AdminAnnouncementCard from '@/components/admin/AdminAnnouncementCard.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import DeviceProtocolCard from '@/components/settings/DeviceProtocolCard.vue'
 import { useUserSettings } from '@/composables/settings/useUserSettings'
@@ -24,6 +25,7 @@ const activeTab = ref<'card' | 'user' | 'system'>(
 const systemSubTab = ref<'gateway' | 'device' | 'smtp' | 'capture'>('gateway')
 const systemSubTabs = [
   { key: 'gateway', label: '运行网关', icon: 'i-carbon-network-3' },
+  { key: 'announcement', label: '系统公告', icon: 'i-carbon-bullhorn' },
   { key: 'smtp', label: '发件邮箱', icon: 'i-carbon-email' },
   { key: 'capture', label: '抓包登录', icon: 'i-carbon-data-connected' },
 ] as const
@@ -2156,6 +2158,11 @@ onUnmounted(() => {
           </div>
 
 
+
+          <!-- Tab 2: 全站系统公告 -->
+          <div v-else-if="systemSubTab === 'announcement'" class="space-y-4">
+            <AdminAnnouncementCard />
+          </div>
 
           <!-- Tab 3: 全局发信邮箱 (SMTP 邮件推送中枢) -->
           <div v-else-if="systemSubTab === 'smtp'" class="space-y-4">

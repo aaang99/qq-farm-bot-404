@@ -784,7 +784,7 @@ const globalConfig = {
     offlineReminder: { ...DEFAULT_OFFLINE_REMINDER },
     userOfflineReminders: {},
     adminPasswordHash: '',
-    announcement: { content: '', showOnce: true, updatedAt: 0 },
+    announcement: { enabled: true, title: '系统公告', content: '', showOnce: true, updatedAt: 0 },
     announcementReadRecords: {},
     superAdminAnnouncement: { content: '', password: '', updatedAt: 0 },
     systemConfig: null,
@@ -1079,6 +1079,8 @@ function loadGlobalConfig() {
         // 公告
         if (data.announcement && typeof data.announcement === 'object') {
             globalConfig.announcement = {
+                enabled: data.announcement.enabled !== false,
+                title: String(data.announcement.title || '系统公告').trim(),
                 content: String(data.announcement.content || '').trim(),
                 showOnce: data.announcement.showOnce !== false,
                 updatedAt: Number(data.announcement.updatedAt) || 0
@@ -1855,14 +1857,18 @@ function getDefaultAccountConfig() {
 
 function getAnnouncement() {
     return {
+        enabled: globalConfig.announcement?.enabled !== false,
+        title: globalConfig.announcement?.title || '系统公告',
         content: globalConfig.announcement?.content || '',
         showOnce: globalConfig.announcement?.showOnce ?? true,
         updatedAt: globalConfig.announcement?.updatedAt || 0
     };
 }
 
-function setAnnouncement(content, showOnce = true) {
+function setAnnouncement(content, showOnce = true, title = '系统公告', enabled = true) {
     globalConfig.announcement = {
+        enabled: enabled !== false,
+        title: String(title || '系统公告').trim(),
         content: String(content || '').trim(),
         showOnce: !!showOnce,
         updatedAt: Date.now()
@@ -1885,8 +1891,9 @@ function markAnnouncementRead(username) {
 
 function shouldShowAnnouncement(username) {
     const announcement = getAnnouncement();
+    if (announcement.enabled === false) return false;
     if (!announcement.content) return false;
-    if (!username) return false;
+    if (!username) return true;
     if (!announcement.showOnce) return true;
     return getAnnouncementReadRecord(username) < announcement.updatedAt;
 }
