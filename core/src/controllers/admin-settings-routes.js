@@ -455,18 +455,29 @@ function registerAdminSettingsRoutes({
     }
   });
 
-  // ============ 系统公告 API ============
-  app.get("/api/announcement", (req, res) => {
+  // ============ 多公告系统 API ============
+  // 用户端：获取启用的公告列表（附带每条已读/未读状态）
+  app.get("/api/announcements", (req, res) => {
     try {
       const currentUser = req.currentUser;
       const username = currentUser ? currentUser.username : '';
-      const data = store.getAnnouncement ? store.getAnnouncement() : { content: '', enabled: false };
-      const unread = username && store.shouldShowAnnouncement ? store.shouldShowAnnouncement(username) : false;
+      const list = store.getAnnouncements ? store.getAnnouncements(false) : [];
+      const readSet = username && store.getUserReadAnnouncementIds
+        ? store.getUserReadAnnouncementIds(username)
+        : new Set();
+      
+      const enriched = list.map(item => ({
+        ...item,
+        read: readSet.has(item.id)
+      }));
+      const unreadCount = enriched.filter(item => !item.read).length;
+
       res.json({
         ok: true,
         data: {
-          ...data,
-          unread: data.enabled !== false && !!data.content && unread
+          list: enriched,
+          unreadCount,
+          hasUnread: unreadCount > 0
         }
       });
     } catch (e) {
@@ -474,14 +485,16 @@ function registerAdminSettingsRoutes({
     }
   });
 
-  app.post("/api/announcement/read", (req, res) => {
+  // 用户端：标记公告为已读（支持单个 ID 或 'all'）
+  app.post("/api/announcements/read", (req, res) => {
     try {
       const currentUser = req.currentUser;
       if (!currentUser) {
         return res.status(401).json({ ok: false, error: "未登录" });
       }
+      const { id } = req.body || {};
       if (store.markAnnouncementRead) {
-        store.markAnnouncementRead(currentUser.username);
+        store.markAnnouncementRead(currentUser.username, id || 'all');
       }
       res.json({ ok: true });
     } catch (e) {
@@ -489,18 +502,64 @@ function registerAdminSettingsRoutes({
     }
   });
 
-  app.post("/api/admin/announcement", (req, res) => {
+  // 兼容老接口
+  app.get("/api/announcement", (req, res) => {
+    try {
+      const currentUser = req.currentUser;
+      const username = currentUser ? currentUser.username : '';
+      const item = store.getAnnouncement ? store.getAnnouncement() : null;
+      const hasUnread = username && store.hasUnreadAnnouncements ? store.hasUnreadAnnouncements(username) : false;
+      res.json({
+        ok: true,
+        data: item ? { ...item, unread: hasUnread } : { enabled: false, content: '', unread: false }
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 管理端：获取全量公告（含禁用的）
+  app.get("/api/admin/announcements", (req, res) => {
+    const currentUser = req.currentUser;
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
+      return res.status(403).json({ ok: false, error: "无权访问" });
+    }
+    try {
+      const list = store.getAnnouncements ? store.getAnnouncements(true) : [];
+      res.json({ ok: true, data: list });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 管理端：新增或更新公告
+  app.post("/api/admin/announcements", (req, res) => {
     const currentUser = req.currentUser;
     if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
       return res.status(403).json({ ok: false, error: "无权操作" });
     }
     try {
-      const { content, title, showOnce, enabled } = req.body || {};
-      if (!store.setAnnouncement) {
-        return res.status(500).json({ ok: false, error: "服务不可用" });
+      const payload = req.body || {};
+      if (!payload.title || !payload.content) {
+        return res.status(400).json({ ok: false, error: "公告标题与内容不能为空" });
       }
-      const data = store.setAnnouncement(content, showOnce, title, enabled);
-      res.json({ ok: true, data, message: "系统公告已更新并发布" });
+      const record = store.addOrUpdateAnnouncement ? store.addOrUpdateAnnouncement(payload) : null;
+      res.json({ ok: true, data: record, message: "公告已保存成功！" });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // 管理端：删除单条公告
+  app.delete("/api/admin/announcements/:id", (req, res) => {
+    const currentUser = req.currentUser;
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'super_admin')) {
+      return res.status(403).json({ ok: false, error: "无权操作" });
+    }
+    try {
+      const id = req.params.id;
+      const ok = store.deleteAnnouncement ? store.deleteAnnouncement(id) : false;
+      res.json({ ok: true, message: "公告已删除" });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

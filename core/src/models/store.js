@@ -784,7 +784,8 @@ const globalConfig = {
     offlineReminder: { ...DEFAULT_OFFLINE_REMINDER },
     userOfflineReminders: {},
     adminPasswordHash: '',
-    announcement: { enabled: true, title: '系统公告', content: '', showOnce: true, updatedAt: 0 },
+    announcements: [],
+    announcementReadRecords: {},
     announcementReadRecords: {},
     superAdminAnnouncement: { content: '', password: '', updatedAt: 0 },
     systemConfig: null,
@@ -1077,15 +1078,34 @@ function loadGlobalConfig() {
         }
 
         // 公告
-        if (data.announcement && typeof data.announcement === 'object') {
-            globalConfig.announcement = {
-                enabled: data.announcement.enabled !== false,
+        // 多公告列表体系加载与迁移
+        let announcementsList = [];
+        if (Array.isArray(data.announcements)) {
+            announcementsList = data.announcements.map(item => ({
+                id: String(item.id || Date.now()),
+                title: String(item.title || '系统公告').trim(),
+                content: String(item.content || '').trim(),
+                category: String(item.category || 'notice').trim(),
+                pinned: item.pinned === true,
+                enabled: item.enabled !== false,
+                createdAt: Number(item.createdAt) || Date.now(),
+                updatedAt: Number(item.updatedAt) || Date.now()
+            }));
+        } else if (data.announcement && typeof data.announcement === 'object' && data.announcement.content) {
+            // 兼容老版本单条公告自动平滑迁移
+            announcementsList = [{
+                id: 'ann_' + (data.announcement.updatedAt || Date.now()),
                 title: String(data.announcement.title || '系统公告').trim(),
                 content: String(data.announcement.content || '').trim(),
-                showOnce: data.announcement.showOnce !== false,
-                updatedAt: Number(data.announcement.updatedAt) || 0
-            };
+                category: 'notice',
+                pinned: true,
+                enabled: data.announcement.enabled !== false,
+                createdAt: Number(data.announcement.updatedAt) || Date.now(),
+                updatedAt: Number(data.announcement.updatedAt) || Date.now()
+            }];
         }
+        globalConfig.announcements = announcementsList;
+
         if (data.announcementReadRecords && typeof data.announcementReadRecords === 'object') {
             globalConfig.announcementReadRecords = { ...data.announcementReadRecords };
         }
@@ -1855,47 +1875,99 @@ function getDefaultAccountConfig() {
 
 // ==================== 公告管理 ====================
 
-function getAnnouncement() {
-    return {
-        enabled: globalConfig.announcement?.enabled !== false,
-        title: globalConfig.announcement?.title || '系统公告',
-        content: globalConfig.announcement?.content || '',
-        showOnce: globalConfig.announcement?.showOnce ?? true,
-        updatedAt: globalConfig.announcement?.updatedAt || 0
-    };
+function getAnnouncements(includeDisabled = false) {
+    const list = Array.isArray(globalConfig.announcements) ? globalConfig.announcements : [];
+    const filtered = includeDisabled ? list : list.filter(a => a.enabled !== false);
+    return filtered.sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        return Number(b.createdAt || 0) - Number(a.createdAt || 0);
+    });
 }
 
-function setAnnouncement(content, showOnce = true, title = '系统公告', enabled = true) {
-    globalConfig.announcement = {
-        enabled: enabled !== false,
-        title: String(title || '系统公告').trim(),
-        content: String(content || '').trim(),
-        showOnce: !!showOnce,
-        updatedAt: Date.now()
+function addOrUpdateAnnouncement(item = {}) {
+    if (!Array.isArray(globalConfig.announcements)) globalConfig.announcements = [];
+    const id = item.id ? String(item.id) : ('ann_' + Date.now() + '_' + Math.floor(Math.random() * 1000));
+    const now = Date.now();
+    const existingIdx = globalConfig.announcements.findIndex(a => a.id === id);
+    const record = {
+        id,
+        title: String(item.title || '系统公告').trim(),
+        content: String(item.content || '').trim(),
+        category: String(item.category || 'notice').trim(),
+        pinned: item.pinned === true,
+        enabled: item.enabled !== false,
+        createdAt: existingIdx >= 0 ? globalConfig.announcements[existingIdx].createdAt : now,
+        updatedAt: now
     };
+    if (existingIdx >= 0) {
+        globalConfig.announcements[existingIdx] = record;
+    } else {
+        globalConfig.announcements.unshift(record);
+    }
     saveGlobalConfig();
-    return getAnnouncement();
+    return record;
+}
+
+function deleteAnnouncement(id) {
+    if (!Array.isArray(globalConfig.announcements)) return false;
+    const strId = String(id || '');
+    const beforeLen = globalConfig.announcements.length;
+    globalConfig.announcements = globalConfig.announcements.filter(a => a.id !== strId);
+    if (globalConfig.announcements.length !== beforeLen) {
+        saveGlobalConfig();
+        return true;
+    }
+    return false;
+}
+
+function getUserReadAnnouncementIds(username) {
+    const u = String(username || '').trim();
+    if (!u) return new Set();
+    const records = globalConfig.announcementReadRecords?.[u];
+    if (Array.isArray(records)) return new Set(records.map(String));
+    if (records && typeof records === 'object') return new Set(Object.keys(records).map(String));
+    return new Set();
+}
+
+function markAnnouncementRead(username, announcementId = 'all') {
+    const u = String(username || '').trim();
+    if (!u) return;
+    if (!globalConfig.announcementReadRecords) globalConfig.announcementReadRecords = {};
+    if (!Array.isArray(globalConfig.announcementReadRecords[u])) {
+        globalConfig.announcementReadRecords[u] = [];
+    }
+    const currentList = new Set(globalConfig.announcementReadRecords[u].map(String));
+    if (announcementId === 'all') {
+        const allActive = getAnnouncements(false);
+        for (const item of allActive) {
+            currentList.add(item.id);
+        }
+    } else {
+        currentList.add(String(announcementId));
+    }
+    globalConfig.announcementReadRecords[u] = Array.from(currentList);
+    saveGlobalConfig();
+}
+
+function hasUnreadAnnouncements(username) {
+    const active = getAnnouncements(false);
+    if (active.length === 0) return false;
+    const readSet = getUserReadAnnouncementIds(username);
+    return active.some(a => !readSet.has(a.id));
+}
+
+// 保持历史兼容方法
+function getAnnouncement() {
+    const list = getAnnouncements(false);
+    return list[0] || { enabled: false, title: '系统公告', content: '', updatedAt: 0 };
 }
 
 function getAnnouncementReadRecord(username) {
-    if (!username) return 0;
-    return globalConfig.announcementReadRecords?.[username] || 0;
-}
-
-function markAnnouncementRead(username) {
-    if (!username) return;
-    if (!globalConfig.announcementReadRecords) globalConfig.announcementReadRecords = {};
-    globalConfig.announcementReadRecords[username] = Date.now();
-    saveGlobalConfig();
+    return 0;
 }
 
 function shouldShowAnnouncement(username) {
-    const announcement = getAnnouncement();
-    if (announcement.enabled === false) return false;
-    if (!announcement.content) return false;
-    if (!username) return true;
-    if (!announcement.showOnce) return true;
-    return getAnnouncementReadRecord(username) < announcement.updatedAt;
+    return hasUnreadAnnouncements(username);
 }
 
 function getSuperAdminAnnouncement() {
@@ -2171,10 +2243,14 @@ module.exports = {
     getPlantBlacklist,
     setPlantBlacklist,
     getDefaultAccountConfig,
-    getAnnouncement,
-    setAnnouncement,
-    getAnnouncementReadRecord,
+    getAnnouncements,
+    addOrUpdateAnnouncement,
+    deleteAnnouncement,
+    getUserReadAnnouncementIds,
     markAnnouncementRead,
+    hasUnreadAnnouncements,
+    getAnnouncement,
+    getAnnouncementReadRecord,
     shouldShowAnnouncement,
     getSuperAdminAnnouncement,
     setSuperAdminAnnouncement,
