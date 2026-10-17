@@ -1378,121 +1378,124 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div
-            v-if="showCreateModal"
-            class="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-3 sm:p-4 backdrop-blur-sm"
-            @click.self="showCreateModal = false"
-          >
-            <div class="max-w-md w-full max-h-[85vh] flex flex-col rounded-2xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700 overflow-hidden" @click.stop>
-              <!-- 固定顶部标题栏 -->
-              <div class="flex-none px-5 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
-                <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <span class="i-carbon-add-alt text-blue-500" />
-                  创建卡密
-                </h2>
-                <button
-                  class="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-700 transition"
-                  @click="showCreateModal = false"
-                >
-                  <div class="i-carbon-close text-lg" />
-                </button>
-              </div>
-
-              <!-- 中间自适应滚动表单区 -->
-              <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar">
-                <div>
-                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    描述
-                  </label>
-                  <BaseInput
-                    v-model="newCard.description"
-                    placeholder="例如：月卡2024 / 体验卡"
-                  />
+          <!-- 创建卡密模态弹窗：Teleport 到 body，彻底解决移动端被外层 backdrop-blur 容器限制导致的底部截断问题 -->
+          <Teleport to="body">
+            <div
+              v-if="showCreateModal"
+              class="fixed inset-0 z-[10080] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md"
+              @click.self="showCreateModal = false"
+            >
+              <div class="max-w-md w-full max-h-[85vh] flex flex-col rounded-3xl bg-white shadow-2xl dark:bg-gray-900 border border-white/80 dark:border-white/10 overflow-hidden" @click.stop>
+                <!-- 固定顶部标题栏 -->
+                <div class="flex-none px-5 py-3.5 flex items-center justify-between border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
+                  <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="i-carbon-add-alt text-blue-500" />
+                    创建卡密
+                  </h2>
+                  <button
+                    class="h-7 w-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-700 transition"
+                    @click="showCreateModal = false"
+                  >
+                    <div class="i-carbon-close text-lg" />
+                  </button>
                 </div>
 
-                <div>
-                  <label class="mb-1.5 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    卡密类型
-                  </label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <label
-                      class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
-                      :class="newCard.type === 'time' ? 'border-blue-500 bg-blue-50/60 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
-                    >
-                      <input v-model="newCard.type" type="radio" value="time" class="hidden">
-                      <span class="i-carbon-time" />
-                      时间卡 (时长)
+                <!-- 中间自适应滚动表单区 -->
+                <div class="flex-1 overflow-y-auto px-5 py-4 space-y-3.5 custom-scrollbar">
+                  <div>
+                    <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      描述
                     </label>
-                    <label
-                      class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
-                      :class="newCard.type === 'quota' ? 'border-orange-500 bg-orange-50/60 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
-                    >
-                      <input v-model="newCard.type" type="radio" value="quota" class="hidden">
-                      <span class="i-carbon-user-avatar" />
-                      额度卡 (账号数)
-                    </label>
+                    <BaseInput
+                      v-model="newCard.description"
+                      placeholder="例如：月卡2024 / 体验卡"
+                    />
                   </div>
-                </div>
 
-                <!-- 免费卡密勾选卡片 -->
-                <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
-                  <label class="flex cursor-pointer items-center justify-between select-none">
-                    <div class="flex items-center gap-2">
-                      <input
-                        v-model="newCard.isFree"
-                        type="checkbox"
-                        class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700"
+                  <div>
+                    <label class="mb-1.5 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      卡密类型
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label
+                        class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
+                        :class="newCard.type === 'time' ? 'border-blue-500 bg-blue-50/60 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
                       >
-                      <span class="text-xs font-bold text-gray-800 dark:text-gray-200">免费卡密</span>
+                        <input v-model="newCard.type" type="radio" value="time" class="hidden">
+                        <span class="i-carbon-time" />
+                        时间卡 (时长)
+                      </label>
+                      <label
+                        class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
+                        :class="newCard.type === 'quota' ? 'border-orange-500 bg-orange-50/60 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
+                      >
+                        <input v-model="newCard.type" type="radio" value="quota" class="hidden">
+                        <span class="i-carbon-user-avatar" />
+                        额度卡 (账号数)
+                      </label>
                     </div>
-                    <span class="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
-                      29天限领一次
-                    </span>
-                  </label>
-                  <p class="mt-1 text-[11px] text-gray-500 pl-6 dark:text-gray-400 leading-tight">
-                    勾选后带专属免费标识，供注册页领取，并受严格29天频次风控。
-                  </p>
-                </div>
-
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                      {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
-                    </label>
-                    <span v-if="newCard.type === 'time'" class="text-[11px] text-gray-400">输入 -1 表示永久</span>
                   </div>
-                  <BaseInput
-                    v-model.number="newCard.days"
-                    type="number"
-                    :placeholder="newCard.type === 'quota' ? '可添加的账号数量' : '天数'"
-                  />
+
+                  <!-- 免费卡密勾选卡片 -->
+                  <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                    <label class="flex cursor-pointer items-center justify-between select-none">
+                      <div class="flex items-center gap-2">
+                        <input
+                          v-model="newCard.isFree"
+                          type="checkbox"
+                          class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-700"
+                        >
+                        <span class="text-xs font-bold text-gray-800 dark:text-gray-200">免费卡密</span>
+                      </div>
+                      <span class="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-100/80 dark:bg-emerald-900/60 px-2 py-0.5 rounded-full">
+                        29天限领一次
+                      </span>
+                    </label>
+                    <p class="mt-1 text-[11px] text-gray-500 pl-6 dark:text-gray-400 leading-tight">
+                      勾选后带专属免费标识，供注册页领取，并受严格29天频次风控。
+                    </p>
+                  </div>
+
+                  <div>
+                    <div class="flex items-center justify-between mb-1">
+                      <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
+                      </label>
+                      <span v-if="newCard.type === 'time'" class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                    </div>
+                    <BaseInput
+                      v-model.number="newCard.days"
+                      type="number"
+                      :placeholder="newCard.type === 'quota' ? '可添加的账号数量' : '天数'"
+                    />
+                  </div>
+
+                  <div>
+                    <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                      生成数量 (1-100)
+                    </label>
+                    <BaseInput
+                      v-model.number="newCard.count"
+                      type="number"
+                      min="1"
+                      max="100"
+                      placeholder="数量"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                    生成数量 (1-100)
-                  </label>
-                  <BaseInput
-                    v-model.number="newCard.count"
-                    type="number"
-                    min="1"
-                    max="100"
-                    placeholder="数量"
-                  />
+                <!-- 固定底部操作按钮栏（移动端永不截断） -->
+                <div class="flex-none px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/80">
+                  <BaseButton variant="secondary" size="sm" @click="showCreateModal = false">
+                    取消
+                  </BaseButton>
+                  <BaseButton variant="primary" size="sm" @click="createCard">
+                    确认创建
+                  </BaseButton>
                 </div>
-              </div>
-
-              <!-- 固定底部操作按钮栏（移动端永不截断） -->
-              <div class="flex-none px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5 bg-gray-50/50 dark:bg-gray-800/80">
-                <BaseButton variant="secondary" size="sm" @click="showCreateModal = false">
-                  取消
-                </BaseButton>
-                <BaseButton variant="primary" size="sm" @click="createCard">
-                  确认创建
-                </BaseButton>
               </div>
             </div>
-          </div>
+          </Teleport>
         </div>
 
         <!-- 挂机列表（本站所有挂机账号） -->
