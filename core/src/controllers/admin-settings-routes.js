@@ -154,12 +154,20 @@ function buildSettingsPayload(store, accountId, currentUser) {
         ? store.getBagSeedFallbackStrategy(accountId)
         : "level",
     ui: store.getUI(),
-    offlineReminder:
-      store.getOfflineReminder
-        ? (currentUser && (currentUser.role === 'admin' || currentUser.username === 'admin')
-            ? store.getOfflineReminder()
-            : store.getOfflineReminder(currentUser?.username))
-        : offlineReminderDefault,
+    offlineReminder: (() => {
+      if (!store.getOfflineReminder) return offlineReminderDefault;
+      const globalCfg = store.getOfflineReminder() || {};
+      const username = String(currentUser?.username || '').trim();
+      const userCfg = username ? store.getOfflineReminder(username) : {};
+      return {
+        ...offlineReminderDefault,
+        ...globalCfg,
+        ...userCfg,
+        channel: userCfg.channel || globalCfg.channel || 'smtp',
+        recipientEmail: userCfg.recipientEmail !== undefined ? userCfg.recipientEmail : (globalCfg.recipientEmail || ''),
+        token: userCfg.token !== undefined ? userCfg.token : (globalCfg.token || ''),
+      };
+    })(),
   };
 }
 
