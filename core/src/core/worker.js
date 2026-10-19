@@ -1021,6 +1021,24 @@ function runMysteryShopAutoBuy() {
     return checkAndAutoBuyMysteryShop();
 }
 
+function startPeriodicSellTimer() {
+    workerScheduler.clear('periodic_sell_check');
+    // 每 10 分钟独立检测一次背包果实 (10 * 60 * 1000 ms)
+    workerScheduler.setIntervalTask('periodic_sell_check', 10 * 60 * 1000, async () => {
+        if (!loginReady) return;
+        if (getAutomation().sell) {
+            log('仓库', '开始执行每 10 分钟背包果实独立检测与出售...');
+            try {
+                await sellAllFruits();
+            } catch (err) {
+                log('仓库', `定时出售果实异常: ${err.message}`, {
+                    module: 'warehouse', event: 'periodic_sell', error: err.message
+                });
+            }
+        }
+    }, { preventOverlap: true });
+}
+
 function startMysteryShopAutoBuyTimer() {
     const { AUTO_BUY_CHECK_INTERVAL_MS } = require('../services/mystery-shop');
     stopMysteryShopAutoBuyTimer();
@@ -1136,10 +1154,6 @@ async function runFarmTick(autoConfig) {
     try {
         await runWithRequestPriority('farm', async () => {
             if (autoConfig.farm) await checkFarm();
-            // 常态农田巡查中，若开启了自动卖果实，自动兜底清空背包中的成熟果实
-            if (autoConfig.sell && !harvestSellRunning) {
-                try { await sellAllFruits(); } catch (_) {}
-            }
         });
     } catch { } finally {
         nextFarmRunAt = Date.now() + nextDelay;
@@ -1657,6 +1671,7 @@ async function startBot(config) {
         startDailyRoutineTimer();
         startStarActivityClaimTimer();
         startMysteryShopAutoBuyTimer();
+        startPeriodicSellTimer();
 
         syncStatus();
     };

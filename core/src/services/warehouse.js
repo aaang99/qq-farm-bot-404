@@ -170,12 +170,56 @@ async function batchUseItems(entries) {
 
 // ---- 数据解析 ----
 
+// 活动专属果实/材料集合（严禁自动出售）
+const ACTIVITY_FRUIT_IDS = new Set([
+  40525, 40526, 40527, 40528, 40529, 40021, 41435, 49005,
+  704, 705, 706, 707, 708, 709, 710, 711, 713, 714,
+  20525, 20526, 20527, 20528, 20021, 21435, 20529, 29005
+]);
+
+function isActivityFruit(id, info) {
+  const nid = Number(id);
+  if (ACTIVITY_FRUIT_IDS.has(nid)) return true;
+
+  // 奶茶配方中所需果实材料，一律保留不售
+  try {
+    const milkTea = require('./activity-milk-tea');
+    if (milkTea && typeof milkTea.reserveMilkTeaFruit === 'function') {
+      if (milkTea.reserveMilkTeaFruit(nid, true, getServerTimeSec())) return true;
+    }
+  } catch (_) {}
+
+  // 检查物品名称：带“森野”或“活动”等特殊字样
+  const name = String(info && info.name || '');
+  if (name.includes('森野') || name.includes('活动') || name.includes('兑换券')) {
+    return true;
+  }
+
+  return false;
+}
+
 function isFruitItemId(id) {
   const nid = Number(id);
   const info = getItemById(nid);
-  // 如果物品没有正常商店回收价（sells 为空，如森野甜莓40525等活动作物在活动期间），不可直接向商店出售
+  // 必须是可向系统出售（sells 字段不为空）的物品
   if (!info || !info.sells) return false;
-  return !!getPlantByFruitId(nid);
+
+  // 种子绝对不能当果实卖
+  if (info.type === 5) return false;
+
+  // 1. 明确匹配植物果实 (Plant.json)
+  if (getPlantByFruitId(nid)) return true;
+
+  // 2. 属于果实类型 (type 6 为普通果实, 17/18 为变异/黄金果实)
+  if ([6, 17, 18].includes(info.type)) return true;
+
+  // 3. 黄金果实特殊兼容（包括黄金果 40304 及各类变异黄金果实）
+  const name = String(info.name || '');
+  if (name.includes('黄金果') || name.endsWith('果') || name.endsWith('花') || name.endsWith('豆')) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -537,9 +581,14 @@ async function sellAllFruits() {
     for (const item of items) {
       const id = toNum(item.id);
       const count = toNum(item.count);
-      // 只有开启了奶茶制作时才智能预留所需材料，未开启或超额部分正常出售
-      const reservedForTea = require('./activity-milk-tea').reserveMilkTeaFruit(id, isAutomationOn('milk_tea_craft'), getServerTimeSec());
-      if (isFruitItemId(id) && count > 0 && !reservedForTea) {
+      const info = getItemById(id);
+
+      if (count > 0 && isFruitItemId(id)) {
+        // 涉及活动的果实绝对不自动出售
+        if (isActivityFruit(id, info)) {
+          continue;
+        }
+        // 非活动果实（包括普通果实、各类黄金果、变异果实等）全部出售
         fruits.push(item);
       }
     }
