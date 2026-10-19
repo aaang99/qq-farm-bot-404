@@ -59,7 +59,7 @@ let clientSeq = 1;
 let serverSeq = 0;
 const pendingCallbacks = new Map();
 const pendingStartedAt = new Map();
-const requestGate = createRequestGate({ maxActive: 8, maxQueued: 100 });
+const requestGate = createRequestGate({ maxActive: 2, maxQueued: 100, minInterval: 250 });
 let wsErrorState = { code: 0, at: 0, message: '' };
 const networkScheduler = createScheduler('network');
 let tsdkRuntime = null;
@@ -733,7 +733,10 @@ function startHeartbeat() {
         if (timeSinceLastResponse > HEARTBEAT_TIMEOUT) {
             heartbeatMissCount++;
             logWarn('心跳', `连接可能已断开 (${Math.round(timeSinceLastResponse/1000)}s 无响应, miss=${heartbeatMissCount}/${MAX_HEARTBEAT_MISS}, pending=${pendingCallbacks.size})`);
-            if (heartbeatMissCount >= MAX_HEARTBEAT_MISS) {
+            
+            // 快速断开判定：如果检测到已有多个阻塞请求且超过 25 秒无回包，判定为网关假死静默丢包，提前重连
+            const isDeadlock = (pendingCallbacks.size >= 4 && timeSinceLastResponse >= 25000);
+            if (heartbeatMissCount >= MAX_HEARTBEAT_MISS || isDeadlock) {
                 if (!ws || ws.readyState !== WebSocket.OPEN) {
                     log('心跳', '连接已关闭，立即重连...');
                 } else {

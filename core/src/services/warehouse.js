@@ -537,10 +537,9 @@ async function sellAllFruits() {
     for (const item of items) {
       const id = toNum(item.id);
       const count = toNum(item.count);
+      // 只有开启了奶茶制作时才智能预留所需材料，未开启或超额部分正常出售
       const reservedForTea = require('./activity-milk-tea').reserveMilkTeaFruit(id, isAutomationOn('milk_tea_craft'), getServerTimeSec());
-      // 只要是奶茶活动配方所需果实，在活动期间一律禁止自动出售
-      const isTeaFruit = [40525, 40526, 40527, 40528, 40529, 40021, 41435, 49005].includes(id);
-      if (isFruitItemId(id) && count > 0 && !reservedForTea && !isTeaFruit) {
+      if (isFruitItemId(id) && count > 0 && !reservedForTea) {
         fruits.push(item);
       }
     }
