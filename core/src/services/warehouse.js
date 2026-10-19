@@ -170,18 +170,22 @@ async function batchUseItems(entries) {
 
 // ---- 数据解析 ----
 
-// 活动专属果实/材料集合（严禁自动出售）
-const ACTIVITY_FRUIT_IDS = new Set([
-  40525, 40526, 40527, 40528, 40529, 40021, 41435, 49005,
-  704, 705, 706, 707, 708, 709, 710, 711, 713, 714,
-  20525, 20526, 20527, 20528, 20021, 21435, 20529, 29005
+// 当前正在进行的奶茶活动专属原料（锁定绝对不自动出售）
+const CURRENT_ACTIVITY_FRUITS = new Set([
+  40525, // 森野甜莓
+  40526, // 森野白桃
+  40527, // 森野甜橙
+  40528, // 森野红柚
+  40021, // 森野可可豆
+  41435, // 森野柿子
+  40529, // 森野芭乐
+  49005, // 森野黄金芽
 ]);
 
 function isActivityFruit(id, info) {
   const nid = Number(id);
-  if (ACTIVITY_FRUIT_IDS.has(nid)) return true;
+  if (CURRENT_ACTIVITY_FRUITS.has(nid)) return true;
 
-  // 奶茶配方中所需果实材料，一律保留不售
   try {
     const milkTea = require('./activity-milk-tea');
     if (milkTea && typeof milkTea.reserveMilkTeaFruit === 'function') {
@@ -189,9 +193,31 @@ function isActivityFruit(id, info) {
     }
   } catch (_) {}
 
-  // 检查物品名称：带“森野”或“活动”等特殊字样
+  return false;
+}
+
+function isFruitItemId(id) {
+  const nid = Number(id);
+  const info = getItemById(nid);
+
+  // 种子绝对不能当果实卖 (type 5 或 作为种子注册)
+  if ((info && info.type === 5) || getPlantBySeedId(nid)) return false;
+
+  // 1. 明确匹配植物果实 (Plant.json / EventPlants.json，如狗尾草、泡泡棉花糖、经验蘑菇、小红花等)
+  if (getPlantByFruitId(nid)) return true;
+
+  // 2. 属于果实类型 (type 4/6/17/18，涵盖普通果实、各类黄金果、变异果实)
+  if (info && [4, 6, 17, 18].includes(info.type)) {
+    const name = String(info.name || '');
+    if (name.includes('种子') || name.includes('礼包') || name.includes('化肥') || name.includes('狗粮')) {
+      return false;
+    }
+    return true;
+  }
+
+  // 3. 名称包含“黄金果”或“果”等特殊标识
   const name = String(info && info.name || '');
-  if (name.includes('森野') || name.includes('活动') || name.includes('兑换券')) {
+  if (name.includes('黄金果') || name.endsWith('果') || name.endsWith('花') || name.endsWith('豆')) {
     return true;
   }
 
