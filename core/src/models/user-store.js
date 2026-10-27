@@ -771,6 +771,27 @@ function updateCard(code, updates) {
         card.enabled = updates.enabled;
     }
 
+    // 定制卡专属：天数 / 额度 / 剩余可使用次数
+    if (card.type === 'custom') {
+        if (updates.days !== undefined) {
+            card.days = Number.parseInt(updates.days, 10) || 0;
+        }
+        if (updates.quota !== undefined) {
+            card.quota = Math.max(0, Number.parseInt(updates.quota, 10) || 0);
+        }
+        if (updates.unlimitedUses !== undefined) {
+            card.unlimitedUses = updates.unlimitedUses === true;
+            if (card.unlimitedUses) card.maxUses = -1;
+        }
+        // 剩余次数：直接设定"还剩多少次可用"，内部换算为总上限
+        if (updates.remainingUses !== undefined && card.unlimitedUses !== true) {
+            const remaining = Math.max(0, Number.parseInt(updates.remainingUses, 10) || 0);
+            card.maxUses = (Number(card.useCount) || 0) + remaining;
+        }
+        const unlimited = card.unlimitedUses === true || Number(card.maxUses) === -1;
+        card.exhausted = !unlimited && (Number(card.useCount) || 0) >= Number(card.maxUses || 1);
+    }
+
     saveCards();
     return card;
 }

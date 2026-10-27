@@ -150,6 +150,62 @@ const newCard = ref({
   maxUses: 1,
 })
 
+// 定制卡编辑弹窗
+const showEditCardModal = ref(false)
+const editCardLoading = ref(false)
+const editCardForm = ref({
+  code: '',
+  description: '',
+  days: 30,
+  quota: 0,
+  unlimitedUses: false,
+  remainingUses: 0,
+})
+
+function openEditCardModal(card: Card) {
+  editCardForm.value = {
+    code: card.code,
+    description: card.description,
+    days: card.days,
+    quota: Number(card.quota) || 0,
+    unlimitedUses: card.unlimitedUses === true || card.maxUses === -1,
+    remainingUses: Number(getCardRemainingUses(card)) || 0,
+  }
+  showEditCardModal.value = true
+}
+
+async function saveEditCard() {
+  const form = editCardForm.value
+  if (!form.unlimitedUses && form.remainingUses < 0) {
+    toast.warning('剩余可使用次数不能为负数')
+    return
+  }
+  editCardLoading.value = true
+  try {
+    const result = await userStore.updateCard(form.code, {
+      description: form.description,
+      days: form.days,
+      quota: form.quota,
+      unlimitedUses: form.unlimitedUses,
+      remainingUses: form.unlimitedUses ? undefined : form.remainingUses,
+    } as any)
+    if (result && result.ok !== false) {
+      toast.success('定制卡已更新')
+      showEditCardModal.value = false
+      await fetchCards()
+    }
+    else {
+      toast.error(result?.error || '更新失败')
+    }
+  }
+  catch (e: any) {
+    toast.error(e.message || '更新失败')
+  }
+  finally {
+    editCardLoading.value = false
+  }
+}
+
 const selectedCards = ref<Set<string>>(new Set())
 const selectAll = ref(false)
 
@@ -524,6 +580,12 @@ function getCardTypeLabel(card: Card) {
     return '定制'
   }
   return '时间'
+}
+
+function getCardRemainingUses(card: Card) {
+  if (card.unlimitedUses || card.maxUses === -1)
+    return '∞'
+  return String(Math.max(0, (card.maxUses || 1) - (card.useCount || 0)))
 }
 
 function getCardValueLabel(card: Card) {
@@ -1336,6 +1398,9 @@ onUnmounted(() => {
                         {{ card.createdAt ? new Date(card.createdAt).toLocaleDateString() : '-' }}
                       </td>
                       <td class="whitespace-nowrap px-3 py-2.5 text-right text-xs font-medium">
+                        <button v-if="card.type === 'custom'" class="mr-2 text-purple-600 hover:underline dark:text-purple-400" @click="openEditCardModal(card)">
+                          编辑
+                        </button>
                         <button class="mr-2 text-blue-600 hover:underline dark:text-blue-400" @click="copyCode(card.code)">
                           复制
                         </button>
@@ -1387,9 +1452,9 @@ onUnmounted(() => {
                     </button>
                     <span
                       class="rounded-full px-2 py-0.2 text-[10px] font-semibold"
-                      :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'"
+                      :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : (card.type === 'custom' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300')"
                     >
-                      {{ card.type === 'quota' ? '额度' : '时长' }}
+                      {{ card.type === 'quota' ? '额度' : (card.type === 'custom' ? '定制卡' : '时长') }}
                     </span>
                     <span
                       v-if="card.isFree"
@@ -1428,20 +1493,35 @@ onUnmounted(() => {
                     </span>
                   </div>
                   <div class="flex flex-col">
-                    <span class="text-gray-400">使用人</span>
-                    <span class="font-medium text-gray-700 dark:text-gray-300 mt-0.5 truncate" :title="card.usedBy ? `${card.usedBy}（${card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-'}）` : '暂未使用'">
-                      <template v-if="card.usedBy">
-                        {{ card.usedBy }}<span class="text-gray-400 text-[11px] font-mono font-normal">（{{ card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-' }}）</span>
-                      </template>
-                      <template v-else>
-                        暂未使用
-                      </template>
-                    </span>
+                    <template v-if="card.type === 'custom'">
+                      <span class="text-gray-400">剩余可使用次数</span>
+                      <span class="font-bold mt-0.5" :class="getCardRemainingUses(card) === '∞' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-800 dark:text-gray-200'">
+                        {{ getCardRemainingUses(card) }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400">使用人</span>
+                      <span class="font-medium text-gray-700 dark:text-gray-300 mt-0.5 truncate" :title="card.usedBy ? `${card.usedBy}（${card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-'}）` : '暂未使用'">
+                        <template v-if="card.usedBy">
+                          {{ card.usedBy }}<span class="text-gray-400 text-[11px] font-mono font-normal">（{{ card.usedAt ? new Date(card.usedAt).toLocaleDateString() : '-' }}）</span>
+                        </template>
+                        <template v-else>
+                          暂未使用
+                        </template>
+                      </span>
+                    </template>
                   </div>
                 </div>
 
                 <!-- 卡片底部操作栏 -->
                 <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-100/80 dark:border-gray-700/50">
+                  <button
+                    v-if="card.type === 'custom'"
+                    class="rounded-lg border border-purple-200 bg-purple-50/70 px-2.5 py-1 text-xs font-semibold text-purple-600 active:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300 transition"
+                    @click="openEditCardModal(card)"
+                  >
+                    编辑
+                  </button>
                   <button
                     class="rounded-lg border border-blue-200 bg-blue-50/70 px-2.5 py-1 text-xs font-semibold text-blue-600 active:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300 transition"
                     @click="copyCode(card.code)"
@@ -1666,6 +1746,77 @@ onUnmounted(() => {
               </div>
             </div>
           </Teleport>
+
+        <!-- 定制卡编辑弹窗 -->
+        <Teleport to="body">
+          <div
+            v-if="showEditCardModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+            @click.self="showEditCardModal = false"
+          >
+            <div class="relative max-w-md w-[95vw] rounded-lg bg-white p-5 dark:bg-gray-800 sm:w-full" @click.stop>
+              <button
+                class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                title="关闭"
+                @click="showEditCardModal = false"
+              >
+                <span class="i-carbon-close text-lg" />
+              </button>
+              <h2 class="mb-4 pr-8 text-lg text-gray-900 font-bold dark:text-white">
+                编辑定制卡
+              </h2>
+              <p class="mb-3 font-mono text-xs text-gray-500 dark:text-gray-400">
+                卡密：{{ editCardForm.code }}
+              </p>
+              <div class="space-y-3">
+                <div>
+                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">描述</label>
+                  <BaseInput v-model="editCardForm.description" placeholder="描述" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">天数</label>
+                    <span class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                  </div>
+                  <BaseInput v-model.number="editCardForm.days" type="number" placeholder="天数" />
+                </div>
+                <div>
+                  <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">额度</label>
+                  <BaseInput v-model.number="editCardForm.quota" type="number" min="0" placeholder="可添加的账号数量" />
+                </div>
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">剩余可使用次数</label>
+                    <label class="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 select-none">
+                      <input
+                        v-model="editCardForm.unlimitedUses"
+                        type="checkbox"
+                        class="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 dark:border-gray-600 dark:bg-gray-700"
+                      >
+                      无限
+                    </label>
+                  </div>
+                  <BaseInput
+                    v-model.number="editCardForm.remainingUses"
+                    type="number"
+                    min="0"
+                    :disabled="editCardForm.unlimitedUses"
+                    :placeholder="editCardForm.unlimitedUses ? '已设为无限' : '剩余次数'"
+                    class="disabled:opacity-50"
+                  />
+                </div>
+              </div>
+              <div class="mt-4 flex justify-end space-x-3">
+                <BaseButton variant="secondary" size="sm" @click="showEditCardModal = false">
+                  取消
+                </BaseButton>
+                <BaseButton variant="primary" size="sm" :loading="editCardLoading" @click="saveEditCard">
+                  保存修改
+                </BaseButton>
+              </div>
+            </div>
+          </div>
+        </Teleport>
         </div>
 
         <!-- 挂机列表（本站所有挂机账号） -->
