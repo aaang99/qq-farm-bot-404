@@ -719,6 +719,27 @@ const clearCriteria = ref({
   notRunning: false,
 })
 
+// 各清理条件的命中数量预览
+const clearCounts = computed(() => {
+  const now = Date.now()
+  const sevenDays = 7 * 24 * 60 * 60 * 1000
+  let expired = 0
+  let inactive7 = 0
+  let notRunning = 0
+  for (const u of users.value) {
+    if (u.role === 'admin')
+      continue
+    const hasRunning = (u.runningAccountsCount || 0) > 0
+    if (u.card && u.card.expiresAt && u.card.expiresAt < now)
+      expired++
+    if (u.lastLoginAt && (now - Number(u.lastLoginAt)) > sevenDays && !hasRunning)
+      inactive7++
+    if (!hasRunning)
+      notRunning++
+  }
+  return { expired, inactive7, notRunning }
+})
+
 async function clearExpiredUsers() {
   if (!clearCriteria.value.expired && !clearCriteria.value.inactiveDays7 && !clearCriteria.value.notRunning) {
     toast.warning('请至少选择一个清理条件')
@@ -2121,17 +2142,17 @@ onUnmounted(() => {
                   <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <input v-model="clearCriteria.expired" type="checkbox" class="h-4 w-4 accent-red-500">
                     <span class="text-sm text-gray-700 dark:text-gray-200">已到期账户</span>
-                    <span class="ml-auto text-xs text-gray-400">卡密已过期的用户</span>
+                    <span class="ml-auto text-xs text-gray-400">卡密已过期的用户 <b class="ml-1 text-red-400">{{ clearCounts.expired }}</b></span>
                   </label>
                   <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <input v-model="clearCriteria.inactiveDays7" type="checkbox" class="h-4 w-4 accent-red-500">
                     <span class="text-sm text-gray-700 dark:text-gray-200">超过 7 天未登录</span>
-                    <span class="ml-auto text-xs text-gray-400">名下有在线挂机账号的不清理</span>
+                    <span class="ml-auto text-xs text-gray-400">名下有在线挂机账号的不清理 <b class="ml-1 text-red-400">{{ clearCounts.inactive7 }}</b></span>
                   </label>
                   <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <input v-model="clearCriteria.notRunning" type="checkbox" class="h-4 w-4 accent-red-500">
                     <span class="text-sm text-gray-700 dark:text-gray-200">未挂机账户</span>
-                    <span class="ml-auto text-xs text-gray-400">名下无在线运行账号</span>
+                    <span class="ml-auto text-xs text-gray-400">名下无在线运行账号 <b class="ml-1 text-red-400">{{ clearCounts.notRunning }}</b></span>
                   </label>
                 </div>
                 <div class="flex justify-end space-x-3">
