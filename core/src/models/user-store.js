@@ -422,6 +422,10 @@ function getCustomCardUses(card) {
     return card.customUses;
 }
 
+// IP 维度采用频率限制（避免公司/学校/运营商 NAT 共用出口 IP 互相误伤）
+const CUSTOM_CARD_IP_WINDOW_MS = 10 * 60 * 1000;
+const CUSTOM_CARD_IP_MAX_USES = 2;
+
 function checkCustomCardAbuse(card, { username = '', ua = '', ip = '' } = {}) {
     const uses = getCustomCardUses(card);
     if (uses.length === 0) return { ok: true };
@@ -429,7 +433,9 @@ function checkCustomCardAbuse(card, { username = '', ua = '', ip = '' } = {}) {
     const normUser = String(username || '').trim().toLowerCase();
     const uaHash = ua ? crypto.createHash('sha256').update(ua).digest('hex') : '';
     const normIp = String(ip || '').replace(/^.*:/, '').trim();
+    const now = Date.now();
 
+    // 单账号 / 单设备：强限制，永久一次
     for (const u of uses) {
         if (normUser && u.username && String(u.username).toLowerCase() === normUser) {
             return { ok: false, error: '该账号已使用过此定制卡，每个账号限用一次' };
@@ -437,8 +443,21 @@ function checkCustomCardAbuse(card, { username = '', ua = '', ip = '' } = {}) {
         if (uaHash && u.uaHash && u.uaHash === uaHash) {
             return { ok: false, error: '当前设备已使用过此定制卡，每个设备限用一次' };
         }
-        if (normIp && u.ip && u.ip === normIp) {
-            return { ok: false, error: '当前网络IP已使用过此定制卡，每个IP限用一次' };
+    }
+
+    // 单 IP：频率限制，窗口期内最多 N 次
+    if (normIp) {
+        const recentIpUses = uses.filter(
+            u => u.ip && u.ip === normIp && (now - Number(u.usedAt || 0)) < CUSTOM_CARD_IP_WINDOW_MS
+        );
+        if (recentIpUses.length >= CUSTOM_CARD_IP_MAX_USES) {
+            const oldest = Math.min(...recentIpUses.map(u => Number(u.usedAt || 0)));
+            const waitMin = Math.max(1, Math.ceil((CUSTOM_CARD_IP_WINDOW_MS - (now - oldest)) / 60000));
+            return {
+                ok: false,
+                error: `当前网络IP使用该卡过于频繁，请 ${waitMin} 分钟后再试`,
+                remainingMs: CUSTOM_CARD_IP_WINDOW_MS - (now - oldest),
+            };
         }
     }
     return { ok: true };
