@@ -330,9 +330,11 @@ function validateUser(username, password, ip = 'unknown') {
     };
 }
 
-function registerUser(username, password, cardCode) {
+function registerUser(username, password, cardCode, meta) {
     loadUsers();
     loadCards();
+    const clientUa = String((meta && meta.ua) || '');
+    const clientIp = String((meta && meta.ip) || '');
 
     if (!username || username.length < 3 || username.length > 32) {
         return { ok: false, error: '用户名长度需在3-32位之间' };
@@ -361,14 +363,14 @@ function registerUser(username, password, cardCode) {
         return { ok: false, error: usable.error };
     }
 
-    if (card.isFree === true) {
-        const freeCheck = checkFreeCardLimit({ username });
-        if (!freeCheck.allowed) {
-            return { ok: false, error: freeCheck.message };
+    // 定制卡防刷：单账号限用一次、单 UA 限用一次、单 IP 限用一次（永久）
+    if (card.type === 'custom') {
+        const abuse = checkCustomCardAbuse(card, { username, ua: clientUa, ip: clientIp });
+        if (!abuse.ok) {
+            return { ok: false, error: abuse.error };
         }
     }
 
-    // 免费卡密严格风控：29 天内每账号/设备仅限一次（防爆破与多卡续费）
     if (card.isFree === true) {
         const freeCheck = checkFreeCardLimit({ username });
         if (!freeCheck.allowed) {
@@ -402,6 +404,9 @@ function registerUser(username, password, cardCode) {
 
     users.push(newUser);
     consumeCard(card, username, now);
+    if (card.type === 'custom') {
+        recordCustomCardUse(card, { username, ua: clientUa, ip: clientIp, now });
+    }
 
     saveUsers();
     saveCards();
@@ -409,6 +414,44 @@ function registerUser(username, password, cardCode) {
     clearFailedAttempts(username);
 
     return { ok: true, user: { username: newUser.username, role: newUser.role, card: newUser.card, accountLimit: newUser.accountLimit, avatar: newUser.avatar } };
+}
+
+// ============ 定制卡防刷（单账号 / 单 UA / 单 IP 各限一次） ============
+function getCustomCardUses(card) {
+    if (!Array.isArray(card.customUses)) card.customUses = [];
+    return card.customUses;
+}
+
+function checkCustomCardAbuse(card, { username = '', ua = '', ip = '' } = {}) {
+    const uses = getCustomCardUses(card);
+    if (uses.length === 0) return { ok: true };
+
+    const normUser = String(username || '').trim().toLowerCase();
+    const uaHash = ua ? crypto.createHash('sha256').update(ua).digest('hex') : '';
+    const normIp = String(ip || '').replace(/^.*:/, '').trim();
+
+    for (const u of uses) {
+        if (normUser && u.username && String(u.username).toLowerCase() === normUser) {
+            return { ok: false, error: '该账号已使用过此定制卡，每个账号限用一次' };
+        }
+        if (uaHash && u.uaHash && u.uaHash === uaHash) {
+            return { ok: false, error: '当前设备已使用过此定制卡，每个设备限用一次' };
+        }
+        if (normIp && u.ip && u.ip === normIp) {
+            return { ok: false, error: '当前网络IP已使用过此定制卡，每个IP限用一次' };
+        }
+    }
+    return { ok: true };
+}
+
+function recordCustomCardUse(card, { username = '', ua = '', ip = '', now = Date.now() } = {}) {
+    const uses = getCustomCardUses(card);
+    uses.push({
+        username: String(username || '').toLowerCase(),
+        uaHash: ua ? crypto.createHash('sha256').update(ua).digest('hex') : '',
+        ip: String(ip || '').replace(/^.*:/, '').trim(),
+        usedAt: now,
+    });
 }
 
 // 卡密是否仍可用（支持定制卡多次使用）
@@ -463,6 +506,14 @@ function renewUser(username, cardCode) {
     const usable = isCardConsumable(card);
     if (!usable.ok) {
         return { ok: false, error: usable.error };
+    }
+
+    // 定制卡防刷：单账号限用一次
+    if (card.type === 'custom') {
+        const abuse = checkCustomCardAbuse(card, { username });
+        if (!abuse.ok) {
+            return { ok: false, error: abuse.error };
+        }
     }
 
     const now = Date.now();
@@ -543,6 +594,9 @@ function renewUser(username, cardCode) {
 
     // 标记卡密已使用（定制卡累加次数）
     consumeCard(card, username, now);
+    if (card.type === 'custom') {
+        recordCustomCardUse(card, { username, now });
+    }
     if (card.isFree === true) {
         recordFreeCardUsage({ username, cardCode: card.code, action: 'use' });
     }

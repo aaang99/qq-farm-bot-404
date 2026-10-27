@@ -67,7 +67,11 @@ function registerAdminAuthRoutes({ app, createAdminSession, updateAdminSessions,
     if (!username || !password || !cardCode) {
       return res.status(400).json({ ok: false, error: "请填写完整注册信息" });
     }
-    const result = userStore.registerUser(username, password, cardCode);
+    const ua = req.headers["user-agent"] || "";
+    const result = userStore.registerUser(username, password, cardCode, {
+      ua,
+      ip: getClientIp(req),
+    });
     if (!result.ok) {
       return res.status(400).json(result);
     }
