@@ -1312,14 +1312,17 @@ onUnmounted(() => {
                       </td>
                       <td class="whitespace-nowrap px-3 py-2.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
                         {{ getCardValueLabel(card) }}
+                        <span v-if="card.type === 'custom' && (card.useCount || 0) > 0" class="ml-1 text-[10px] text-gray-400">
+                          (已用{{ card.useCount }}次)
+                        </span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-2.5">
                         <span
                           class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                          :class="!card.enabled ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300' : (card.usedBy ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300')"
+                          :class="!card.enabled ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300' : (card.usedBy || card.exhausted ? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300')"
                         >
-                          <span class="h-1.5 w-1.5 rounded-full" :class="!card.enabled ? 'bg-red-500' : (card.usedBy ? 'bg-gray-400' : 'bg-emerald-500')" />
-                          {{ !card.enabled ? '已禁用' : (card.usedBy ? '已使用' : '待使用') }}
+                          <span class="h-1.5 w-1.5 rounded-full" :class="!card.enabled ? 'bg-red-500' : (card.usedBy || card.exhausted ? 'bg-gray-400' : 'bg-emerald-500')" />
+                          {{ !card.enabled ? '已禁用' : (card.usedBy || card.exhausted ? (card.exhausted && card.type === 'custom' ? '已用尽' : '已使用') : (card.type === 'custom' && (card.useCount || 0) > 0 ? `已用${card.useCount}次` : '待使用')) }}
                         </span>
                       </td>
                       <td class="whitespace-nowrap px-3 py-2.5 text-xs text-gray-700 dark:text-gray-300">

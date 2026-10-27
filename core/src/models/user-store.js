@@ -421,17 +421,11 @@ function consumeCard(card, username, now) {
         return;
     }
     card.useCount = (Number(card.useCount) || 0) + 1;
-    card.usedBy = card.usedBy || username;
     card.usedAt = now;
+    card.lastUsedBy = username;
     const unlimited = card.unlimitedUses === true || Number(card.maxUses) === -1;
     const exhausted = !unlimited && card.useCount >= Number(card.maxUses || 1);
-    // 次数耗尽后标记为已使用，避免继续出现在可领列表
     card.exhausted = exhausted;
-    if (exhausted) {
-        card.usedBy = username;
-    } else {
-        card.usedBy = null;
-    }
 }
 
 function isCardConsumable(card) {
@@ -999,11 +993,13 @@ function claimCardByUA(ua, username = null) {
     }
     
     // 严格限制：只有管理员生成并标记为 isFree === true 的卡密才允许被免费领取
+    // 定制卡不进可领取库存，次数已耗尽的卡也不进
     const unusedFreeCards = cards.filter(c => 
         c.isFree === true &&
         c.type === 'time' && 
         !c.usedBy && 
-        c.enabled
+        c.enabled &&
+        c.exhausted !== true
     );
     
     if (unusedFreeCards.length === 0) {
@@ -1137,6 +1133,11 @@ function verifyCardOwnership(username, cardCode) {
     const card = cards.find(c => c.code === cardCode);
     if (!card) {
         return { ok: false, error: '用户名或卡密错误' };
+    }
+
+    // 定制卡为多次共用卡，不能作为账号归属凭证
+    if (card.type === 'custom') {
+        return { ok: false, error: '定制卡不能用于验证账号归属' };
     }
 
     if (card.usedBy !== username) {

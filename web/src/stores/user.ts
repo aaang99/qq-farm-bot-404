@@ -50,6 +50,8 @@ export interface Card {
   maxUses?: number
   unlimitedUses?: boolean
   useCount?: number
+  exhausted?: boolean
+  lastUsedBy?: string | null
 }
 
 export const useUserStore = defineStore('user', () => {
