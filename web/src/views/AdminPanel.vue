@@ -141,8 +141,13 @@ const newCard = ref({
   description: '',
   days: 30,
   count: 1,
-  type: 'time' as 'time' | 'quota',
+  type: 'time' as 'time' | 'quota' | 'custom',
   isFree: false,
+  // 定制卡专用
+  code: '',
+  quota: 0,
+  unlimitedUses: false,
+  maxUses: 1,
 })
 
 const selectedCards = ref<Set<string>>(new Set())
@@ -262,7 +267,25 @@ async function createCard() {
     return
   }
 
-  const count = Math.min(Math.max(Number.parseInt(String(newCard.value.count), 10) || 1, 1), 100)
+  const isCustom = newCard.value.type === 'custom'
+  if (isCustom) {
+    if (!newCard.value.days && newCard.value.days !== 0) {
+      toast.warning('请输入天数')
+      return
+    }
+    if (!newCard.value.unlimitedUses && (Number(newCard.value.maxUses) || 0) < 1) {
+      toast.warning('请输入可使用次数，或勾选无限')
+      return
+    }
+    if (newCard.value.code && !/^[A-Za-z0-9_-]{3,64}$/.test(newCard.value.code.trim())) {
+      toast.warning('自定义卡密需 3-64 位，仅支持字母、数字、下划线、短横线')
+      return
+    }
+  }
+  // 定制卡指定了自定义卡密时只能生成 1 张
+  const count = isCustom && newCard.value.code.trim()
+    ? 1
+    : Math.min(Math.max(Number.parseInt(String(newCard.value.count), 10) || 1, 1), 100)
 
   try {
     const result = await userStore.createCard(
@@ -270,7 +293,15 @@ async function createCard() {
       newCard.value.days,
       count > 1 ? count : undefined,
       newCard.value.type,
-      newCard.value.isFree,
+      isCustom ? false : newCard.value.isFree,
+      isCustom
+        ? {
+            code: newCard.value.code.trim() || undefined,
+            quota: Number(newCard.value.quota) || 0,
+            maxUses: Number(newCard.value.maxUses) || 1,
+            unlimitedUses: newCard.value.unlimitedUses,
+          }
+        : undefined,
     )
     if (result && result.ok) {
       if (result.batch) {
@@ -283,7 +314,7 @@ async function createCard() {
         toast.success('卡密创建成功')
       }
       showCreateModal.value = false
-      newCard.value = { description: '', days: 30, count: 1, type: 'time', isFree: false }
+      newCard.value = { description: '', days: 30, count: 1, type: 'time', isFree: false, code: '', quota: 0, unlimitedUses: false, maxUses: 1 }
       // 延迟 300ms 刷新列表，确保后端文件写入完毕并防网络竞态
       setTimeout(() => {
         fetchCards()
@@ -489,12 +520,21 @@ function getCardTypeLabel(card: Card) {
   if (card.type === 'quota') {
     return '额度'
   }
+  if (card.type === 'custom') {
+    return '定制'
+  }
   return '时间'
 }
 
 function getCardValueLabel(card: Card) {
   if (card.type === 'quota') {
     return `+${card.days}额度`
+  }
+  if (card.type === 'custom') {
+    const dayLabel = card.days === -1 ? '永久' : `${card.days}天`
+    const quotaLabel = Number(card.quota) > 0 ? ` +${card.quota}额度` : ''
+    const usesLabel = (card.unlimitedUses || card.maxUses === -1) ? '无限次' : `${card.maxUses}次`
+    return `${dayLabel}${quotaLabel} · ${usesLabel}`
   }
   if (card.days === -1)
     return '永久'
@@ -1258,9 +1298,9 @@ onUnmounted(() => {
                         <div class="flex items-center gap-1">
                           <span
                             class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                            :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'"
+                            :class="card.type === 'quota' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300' : (card.type === 'custom' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300')"
                           >
-                            {{ card.type === 'quota' ? '额度卡' : '时间卡' }}
+                            {{ card.type === 'quota' ? '额度卡' : (card.type === 'custom' ? '定制卡' : '时间卡') }}
                           </span>
                           <span
                             v-if="card.isFree"
@@ -1465,14 +1505,14 @@ onUnmounted(() => {
                     <label class="mb-1.5 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
                       卡密类型
                     </label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-3 gap-2">
                       <label
                         class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
                         :class="newCard.type === 'time' ? 'border-blue-500 bg-blue-50/60 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
                       >
                         <input v-model="newCard.type" type="radio" value="time" class="hidden">
                         <span class="i-carbon-time" />
-                        时间卡 (时长)
+                        时间卡
                       </label>
                       <label
                         class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
@@ -1480,13 +1520,21 @@ onUnmounted(() => {
                       >
                         <input v-model="newCard.type" type="radio" value="quota" class="hidden">
                         <span class="i-carbon-user-avatar" />
-                        额度卡 (账号数)
+                        额度卡
+                      </label>
+                      <label
+                        class="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border p-2 text-xs font-medium transition"
+                        :class="newCard.type === 'custom' ? 'border-purple-500 bg-purple-50/60 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300' : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
+                      >
+                        <input v-model="newCard.type" type="radio" value="custom" class="hidden">
+                        <span class="i-carbon-ticket" />
+                        定制卡
                       </label>
                     </div>
                   </div>
 
-                  <!-- 免费卡密勾选卡片 -->
-                  <div class="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
+                  <!-- 免费卡密勾选卡片（定制卡不显示） -->
+                  <div v-if="newCard.type !== 'custom'" class="rounded-xl border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-800/60 dark:bg-emerald-950/20">
                     <label class="flex cursor-pointer items-center justify-between select-none">
                       <div class="flex items-center gap-2">
                         <input
@@ -1505,19 +1553,88 @@ onUnmounted(() => {
                     </p>
                   </div>
 
-                  <div>
-                    <div class="flex items-center justify-between mb-1">
-                      <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-                        {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
+                  <!-- 定制卡专用字段 -->
+                  <template v-if="newCard.type === 'custom'">
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        自定义卡密内容
                       </label>
-                      <span v-if="newCard.type === 'time'" class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                      <BaseInput
+                        v-model="newCard.code"
+                        placeholder="留空则自动生成，如 VIP2026"
+                      />
+                      <p class="mt-1 text-[11px] text-gray-400">
+                        3-64 位，仅支持字母、数字、下划线、短横线；填写后只能生成 1 张
+                      </p>
                     </div>
-                    <BaseInput
-                      v-model.number="newCard.days"
-                      type="number"
-                      :placeholder="newCard.type === 'quota' ? '可添加的账号数量' : '天数'"
-                    />
-                  </div>
+
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                          可使用次数
+                        </label>
+                        <label class="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 select-none">
+                          <input
+                            v-model="newCard.unlimitedUses"
+                            type="checkbox"
+                            class="h-3.5 w-3.5 rounded border-gray-300 text-purple-600 dark:border-gray-600 dark:bg-gray-700"
+                          >
+                          无限
+                        </label>
+                      </div>
+                      <BaseInput
+                        v-model.number="newCard.maxUses"
+                        type="number"
+                        min="1"
+                        :disabled="newCard.unlimitedUses"
+                        :placeholder="newCard.unlimitedUses ? '已设为无限' : '可使用次数'"
+                        class="disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                          天数
+                        </label>
+                        <span class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                      </div>
+                      <BaseInput
+                        v-model.number="newCard.days"
+                        type="number"
+                        placeholder="天数"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                        额度
+                      </label>
+                      <BaseInput
+                        v-model.number="newCard.quota"
+                        type="number"
+                        min="0"
+                        placeholder="可添加的账号数量"
+                      />
+                    </div>
+                  </template>
+
+                  <!-- 时间卡 / 额度卡字段 -->
+                  <template v-else>
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                          {{ newCard.type === 'quota' ? '额度数量' : '天数' }}
+                        </label>
+                        <span v-if="newCard.type === 'time'" class="text-[11px] text-gray-400">输入 -1 表示永久</span>
+                      </div>
+                      <BaseInput
+                        v-model.number="newCard.days"
+                        type="number"
+                        :placeholder="newCard.type === 'quota' ? '可添加的账号数量' : '天数'"
+                      />
+                    </div>
+                  </template>
 
                   <div>
                     <label class="mb-1 block text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
@@ -1527,7 +1644,8 @@ onUnmounted(() => {
                       v-model.number="newCard.count"
                       type="number"
                       min="1"
-                      max="100"
+                      :max="newCard.type === 'custom' && newCard.code.trim() ? 1 : 100"
+                      :disabled="newCard.type === 'custom' && !!newCard.code.trim()"
                       placeholder="数量"
                     />
                   </div>

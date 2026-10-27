@@ -356,12 +356,9 @@ function registerUser(username, password, cardCode) {
         return { ok: false, error: '卡密不存在' };
     }
 
-    if (!card.enabled) {
-        return { ok: false, error: '卡密已被禁用' };
-    }
-
-    if (card.usedBy) {
-        return { ok: false, error: '卡密已被使用' };
+    const usable = isCardConsumable(card);
+    if (!usable.ok) {
+        return { ok: false, error: usable.error };
     }
 
     if (card.isFree === true) {
@@ -398,14 +395,13 @@ function registerUser(username, password, cardCode) {
             expiresAt: card.days === -1 ? null : (now + card.days * 24 * 60 * 60 * 1000),
             enabled: true
         },
-        accountLimit: DEFAULT_ACCOUNT_LIMIT,
+        accountLimit: Number(card.quota) > 0 ? Number(card.quota) : DEFAULT_ACCOUNT_LIMIT,
         avatar: '/default-user-avatar.png',
         createdAt: now
     };
 
     users.push(newUser);
-    card.usedBy = username;
-    card.usedAt = now;
+    consumeCard(card, username, now);
 
     saveUsers();
     saveCards();
@@ -413,6 +409,47 @@ function registerUser(username, password, cardCode) {
     clearFailedAttempts(username);
 
     return { ok: true, user: { username: newUser.username, role: newUser.role, card: newUser.card, accountLimit: newUser.accountLimit, avatar: newUser.avatar } };
+}
+
+// 卡密是否仍可用（支持定制卡多次使用）
+// 消耗一次卡密（定制卡累加使用次数，达到上限即视为已用尽）
+function consumeCard(card, username, now) {
+    const isRepeatable = card.type === 'custom';
+    if (!isRepeatable) {
+        card.usedBy = username;
+        card.usedAt = now;
+        return;
+    }
+    card.useCount = (Number(card.useCount) || 0) + 1;
+    card.usedBy = card.usedBy || username;
+    card.usedAt = now;
+    const unlimited = card.unlimitedUses === true || Number(card.maxUses) === -1;
+    const exhausted = !unlimited && card.useCount >= Number(card.maxUses || 1);
+    // 次数耗尽后标记为已使用，避免继续出现在可领列表
+    card.exhausted = exhausted;
+    if (exhausted) {
+        card.usedBy = username;
+    } else {
+        card.usedBy = null;
+    }
+}
+
+function isCardConsumable(card) {
+    if (!card) return { ok: false, error: '卡密不存在' };
+    if (!card.enabled) return { ok: false, error: '卡密已被禁用' };
+    if (card.usedBy) {
+        // 定制卡：未达次数上限可继续使用
+        if (card.type === 'custom') {
+            const used = Number(card.useCount) || 0;
+            const unlimited = card.unlimitedUses === true || Number(card.maxUses) === -1;
+            if (unlimited || used < Number(card.maxUses || 1)) {
+                return { ok: true };
+            }
+            return { ok: false, error: '卡密可使用次数已耗尽' };
+        }
+        return { ok: false, error: '卡密已被使用' };
+    }
+    return { ok: true };
 }
 
 function renewUser(username, cardCode) {
@@ -429,21 +466,48 @@ function renewUser(username, cardCode) {
         return { ok: false, error: '卡密不存在' };
     }
 
-    if (!card.enabled) {
-        return { ok: false, error: '卡密已被禁用' };
-    }
-
-    if (card.usedBy) {
-        return { ok: false, error: '卡密已被使用' };
+    const usable = isCardConsumable(card);
+    if (!usable.ok) {
+        return { ok: false, error: usable.error };
     }
 
     const now = Date.now();
     const cardType = card.type || 'time';
-    
+
     if (cardType === 'quota') {
         // 额度卡密：增加账号额度
         const currentLimit = user.accountLimit || DEFAULT_ACCOUNT_LIMIT;
         user.accountLimit = currentLimit + card.days;
+    } else if (cardType === 'custom') {
+        // 定制卡：按天数续期，并叠加自定义额度
+        if (!user.card) {
+            user.card = {
+                code: card.code,
+                description: card.description,
+                days: 0,
+                expiresAt: null,
+                enabled: true
+            };
+        }
+        const quotaAdd = Number(card.quota) || 0;
+        if (quotaAdd > 0) {
+            user.accountLimit = (user.accountLimit || DEFAULT_ACCOUNT_LIMIT) + quotaAdd;
+        }
+        const currentExpires = user.card.expiresAt || 0;
+        const currentDays = user.card.days || 0;
+        if (card.days === -1) {
+            user.card.expiresAt = null;
+            user.card.days = -1;
+        } else if (user.card.days === -1) {
+            user.card.expiresAt = null;
+        } else {
+            user.card.days = currentDays + card.days;
+            if (currentExpires && currentExpires > now) {
+                user.card.expiresAt = currentExpires + card.days * 24 * 60 * 60 * 1000;
+            } else {
+                user.card.expiresAt = now + card.days * 24 * 60 * 60 * 1000;
+            }
+        }
     } else {
         // 时间卡密：增加使用时长
         // 确保用户有card对象
@@ -483,9 +547,8 @@ function renewUser(username, cardCode) {
         }
     }
 
-    // 标记卡密已使用
-    card.usedBy = username;
-    card.usedAt = now;
+    // 标记卡密已使用（定制卡累加次数）
+    consumeCard(card, username, now);
     if (card.isFree === true) {
         recordFreeCardUsage({ username, cardCode: card.code, action: 'use' });
     }
@@ -618,20 +681,43 @@ function getAllCards() {
     return cards;
 }
 
-function createCard(description, days, type = 'time', isFree = false) {
+function createCard(description, days, type = 'time', isFree = false, extra = {}) {
     loadCards();
 
+    const opts = extra || {};
+    const cardType = type === 'quota' ? 'quota' : (type === 'custom' ? 'custom' : 'time');
+    const customCode = typeof opts.code === 'string' ? opts.code.trim() : '';
+    if (customCode) {
+        if (customCode.length < 3 || customCode.length > 64) {
+            return { ok: false, error: '自定义卡密长度需在 3-64 位之间' };
+        }
+        if (!/^[A-Za-z0-9_-]+$/.test(customCode)) {
+            return { ok: false, error: '自定义卡密只能包含字母、数字、下划线和短横线' };
+        }
+        if (cards.find(c => c.code === customCode)) {
+            return { ok: false, error: '该卡密已存在，请更换' };
+        }
+    }
     const newCard = {
-        code: generateCardCode(),
+        code: customCode || generateCardCode(),
         description,
         days: Number.parseInt(days, 10) || 30,
-        type: type === 'quota' ? 'quota' : 'time',
+        type: cardType,
         isFree: Boolean(isFree),
         enabled: true,
         usedBy: null,
         usedAt: null,
+        useCount: 0,
         createdAt: Date.now()
     };
+    // 定制卡：可自定义额度、无限次数
+    if (cardType === 'custom') {
+        if (opts.quota !== undefined && opts.quota !== null && opts.quota !== '') {
+            newCard.quota = Number.parseInt(opts.quota, 10) || 0;
+        }
+        newCard.unlimitedUses = opts.unlimitedUses === true;
+        newCard.maxUses = newCard.unlimitedUses ? -1 : Math.max(1, Number.parseInt(opts.maxUses, 10) || 1);
+    }
 
     cards.push(newCard);
     saveCards();
@@ -639,13 +725,14 @@ function createCard(description, days, type = 'time', isFree = false) {
     return newCard;
 }
 
-function createCardsBatch(description, days, count, type = 'time', isFree = false) {
+function createCardsBatch(description, days, count, type = 'time', isFree = false, extra = {}) {
     loadCards();
 
+    const opts = extra || {};
     const createdCards = [];
     const daysNum = Number.parseInt(days, 10) || 30;
     const countNum = Math.min(Math.max(Number.parseInt(count, 10) || 1, 1), 100);
-    const cardType = type === 'quota' ? 'quota' : 'time';
+    const cardType = type === 'quota' ? 'quota' : (type === 'custom' ? 'custom' : 'time');
     const freeFlag = Boolean(isFree);
 
     for (let i = 0; i < countNum; i++) {
@@ -658,8 +745,16 @@ function createCardsBatch(description, days, count, type = 'time', isFree = fals
             enabled: true,
             usedBy: null,
             usedAt: null,
+            useCount: 0,
             createdAt: Date.now()
         };
+        if (cardType === 'custom') {
+            if (opts.quota !== undefined && opts.quota !== null && opts.quota !== '') {
+                newCard.quota = Number.parseInt(opts.quota, 10) || 0;
+            }
+            newCard.unlimitedUses = opts.unlimitedUses === true;
+            newCard.maxUses = newCard.unlimitedUses ? -1 : Math.max(1, Number.parseInt(opts.maxUses, 10) || 1);
+        }
         cards.push(newCard);
         createdCards.push(newCard);
     }

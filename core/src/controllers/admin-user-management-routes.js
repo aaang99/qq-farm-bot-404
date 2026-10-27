@@ -21,23 +21,37 @@ function registerAdminUserManagementRoutes({
 
   app.post("/api/admin/cards", adminRequired, (req, res) => {
     try {
-      const { description, days, count, type, isFree } = req.body || {};
+      const { description, days, quota, count, type, isFree, code: customCode, maxUses, unlimitedUses } = req.body || {};
       if (!description || days === undefined) {
         return res.status(400).json({ ok: false, error: "请提供描述和天数" });
       }
-      const cardType = type === "quota" ? "quota" : "time";
-      const freeFlag = Boolean(isFree);
+      const cardType = type === "quota" ? "quota" : (type === "custom" ? "custom" : "time");
+      // 定制卡不参与免费卡密机制
+      const freeFlag = cardType === "custom" ? false : Boolean(isFree);
+      const extra = {
+        code: cardType === "custom" ? customCode : undefined,
+        quota: cardType === "custom" ? quota : undefined,
+        maxUses: cardType === "custom" ? maxUses : undefined,
+        unlimitedUses: cardType === "custom" ? Boolean(unlimitedUses) : false,
+      };
       if (count && Number.parseInt(count, 10) > 1) {
+        if (cardType === "custom" && extra.code) {
+          return res.status(400).json({ ok: false, error: "自定义卡密的生成数量必须为 1" });
+        }
         const cards = userStore.createCardsBatch(
           description,
           days,
           Number.parseInt(count, 10),
           cardType,
-          freeFlag
+          freeFlag,
+          extra
         );
         return res.json({ ok: true, data: cards, batch: true, count: cards.length });
       }
-      const card = userStore.createCard(description, days, cardType, freeFlag);
+      const card = userStore.createCard(description, days, cardType, freeFlag, extra);
+      if (card && card.ok === false) {
+        return res.status(400).json(card);
+      }
       res.json({ ok: true, data: card });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

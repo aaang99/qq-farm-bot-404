@@ -39,11 +39,17 @@ export interface Card {
   code: string
   description: string
   days: number
-  type: 'time' | 'quota'
+  type: 'time' | 'quota' | 'custom'
   enabled: boolean
   usedBy: string | null
   usedAt: number | null
   createdAt: number
+  isFree?: boolean
+  // 定制卡字段
+  quota?: number
+  maxUses?: number
+  unlimitedUses?: boolean
+  useCount?: number
 }
 
 export const useUserStore = defineStore('user', () => {
@@ -200,8 +206,15 @@ export const useUserStore = defineStore('user', () => {
     return res.data
   }
 
-  async function createCard(description: string, days: number, count?: number, type?: 'time' | 'quota', isFree?: boolean) {
-    const res = await api.post('/api/admin/cards', { description, days, count, type, isFree })
+  async function createCard(
+    description: string,
+    days: number,
+    count?: number,
+    type?: 'time' | 'quota' | 'custom',
+    isFree?: boolean,
+    extra?: { code?: string, quota?: number, maxUses?: number, unlimitedUses?: boolean },
+  ) {
+    const res = await api.post('/api/admin/cards', { description, days, count, type, isFree, ...(extra || {}) })
     return res.data
   }
 
