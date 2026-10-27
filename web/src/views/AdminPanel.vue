@@ -70,8 +70,18 @@ async function fetchAllBotAccounts() {
   }
 }
 
-const qqBotAccountsCount = computed(() => botAccounts.value.filter(a => a.platform === 'qq').length)
-const wxBotAccountsCount = computed(() => botAccounts.value.filter(a => a.platform === 'wx').length)
+// 先按右侧运行状态筛选，徽章数量随之更新
+const statusFilteredBotAccounts = computed(() => {
+  const list = Array.isArray(botAccounts.value) ? botAccounts.value : []
+  if (botAccountStatusFilter.value === 'running')
+    return list.filter(a => a.running)
+  if (botAccountStatusFilter.value === 'stopped')
+    return list.filter(a => !a.running)
+  return list
+})
+
+const qqBotAccountsCount = computed(() => statusFilteredBotAccounts.value.filter(a => a.platform === 'qq').length)
+const wxBotAccountsCount = computed(() => statusFilteredBotAccounts.value.filter(a => a.platform === 'wx').length)
 
 const filteredBotAccounts = computed(() => {
   const list = Array.isArray(botAccounts.value) ? botAccounts.value : []
@@ -1563,7 +1573,7 @@ onUnmounted(() => {
                 :class="botAccountPlatformFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'"
                 @click="botAccountPlatformFilter = 'all'"
               >
-                全部 ({{ botAccounts.length }})
+                全部 ({{ statusFilteredBotAccounts.length }})
               </button>
               <button
                 class="rounded-lg px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1"
