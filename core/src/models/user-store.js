@@ -503,6 +503,7 @@ function getAllUsers() {
         role: u.role,
         card: u.card,
         createdAt: u.createdAt || null,
+        lastLoginAt: u.lastLoginAt || null,
         accountLimit: u.accountLimit || DEFAULT_ACCOUNT_LIMIT
     }));
 }
@@ -957,35 +958,64 @@ function clearExpiredClaimRecords() {
     return { cleared: beforeCount - cardClaimRecords.length };
 }
 
-function clearExpiredUsers() {
+function clearExpiredUsers(options) {
     loadUsers();
+    const opts = options || {};
+    const cleanupExpired = opts.expired !== false;
+    const inactiveDays = Number(opts.inactiveDays) > 0 ? Number(opts.inactiveDays) : 0;
+    const notRunningOnly = !!opts.notRunning;
+    const isUserRunning = typeof opts.isUserRunning === 'function' ? opts.isUserRunning : null;
     const now = Date.now();
     const expiredUsers = [];
     const usersToKeep = [];
-    
+
     for (const user of users) {
         if (user.role === 'admin') {
             usersToKeep.push(user);
             continue;
         }
-        
-        if (user.card && user.card.expiresAt && user.card.expiresAt < now) {
+
+        let matched = false;
+        // 已到期账户
+        if (cleanupExpired && user.card && user.card.expiresAt && user.card.expiresAt < now) {
+            matched = true;
+        }
+        // 超过 N 天未登录（无登录记录的旧用户视为未知，保留不动）
+        if (!matched && inactiveDays > 0 && user.lastLoginAt && (now - user.lastLoginAt) > inactiveDays * 86400000) {
+            matched = true;
+        }
+        // 未挂机账户（名下无任何在线运行账号）
+        if (!matched && notRunningOnly && isUserRunning && isUserRunning(user.username) === false) {
+            matched = true;
+        }
+
+        if (matched) {
             expiredUsers.push(user.username);
         } else {
             usersToKeep.push(user);
         }
     }
-    
+
     if (expiredUsers.length > 0) {
         users = usersToKeep;
         saveUsers();
     }
-    
+
     return {
         ok: true,
         deletedCount: expiredUsers.length,
         deletedUsers: expiredUsers
     };
+}
+
+// 记录用户最后登录时间
+function touchLastLogin(username) {
+    loadUsers();
+    const user = users.find(u => u.username === username);
+    if (!user) return false;
+    user.lastLoginAt = Date.now();
+    saveUsers();
+    return true;
 }
 
 function getUserCount() {
@@ -1067,6 +1097,7 @@ module.exports = {
     getCardClaimRecords,
     clearExpiredClaimRecords,
     clearExpiredUsers,
+    touchLastLogin,
     getUserCount,
     checkRateLimit,
     verifyCardOwnership,

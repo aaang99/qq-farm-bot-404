@@ -134,6 +134,7 @@ function registerAdminUserManagementRoutes({
       const usersWithBotStats = users.map(u => ({
         ...u,
         createdAt: u.createdAt || u.created_at || (u.card ? u.card.createdAt : null) || null,
+        lastLoginAt: u.lastLoginAt || null,
         runningAccountsCount: runningCountByUser[u.username] || 0,
       }));
 
@@ -152,9 +153,36 @@ function registerAdminUserManagementRoutes({
     }
   });
 
-  app.post("/api/admin/users/clear-expired", adminRequired, (_req, res) => {
+  app.post("/api/admin/users/clear-expired", adminRequired, (req, res) => {
     try {
-      const result = userStore.clearExpiredUsers();
+      // 支持按条件清理：已到期 / 超过 N 天未登录 / 未挂机（无在线运行账号）
+      const body = req.body || {};
+      const hasCriteria = typeof body.expired === "boolean"
+        || typeof body.inactiveDays === "number"
+        || typeof body.notRunning === "boolean";
+      let options;
+      if (hasCriteria) {
+        const runningUsernames = new Set();
+        if (body.notRunning) {
+          const allAccounts = typeof getAccountsForUser === "function" ? getAccountsForUser() : [];
+          for (const acc of allAccounts) {
+            let isRunning = false;
+            try {
+              if (provider && typeof provider.isAccountRunning === "function") {
+                isRunning = provider.isAccountRunning(acc.id);
+              }
+            } catch (_) {}
+            if (isRunning && acc.username) runningUsernames.add(acc.username);
+          }
+        }
+        options = {
+          expired: body.expired !== false,
+          inactiveDays: Number(body.inactiveDays) || 0,
+          notRunning: !!body.notRunning,
+          isUserRunning: (username) => runningUsernames.has(username),
+        };
+      }
+      const result = userStore.clearExpiredUsers(options);
       if (result.ok && result.deletedCount > 0) {
         for (const u of result.deletedUsers) {
           if (store && typeof store.deleteAccountsByUser === 'function') {

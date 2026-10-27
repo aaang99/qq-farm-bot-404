@@ -45,6 +45,8 @@ function registerAdminAuthRoutes({ app, createAdminSession, updateAdminSessions,
       }
     }
 
+    // 记录最后登录时间
+    try { userStore.touchLastLogin(user.username); } catch (_) {}
     const token = createAdminSession(user);
     return res.json({
       ok: true,

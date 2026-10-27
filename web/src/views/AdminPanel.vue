@@ -618,6 +618,9 @@ interface UserInfo {
   role: string
   card: UserCard | null
   accountLimit: number
+  lastLoginAt?: number | string | null
+  createdAt?: number | string | null
+  runningAccountsCount?: number
 }
 
 interface EditForm {
@@ -710,13 +713,28 @@ async function deleteUser(user: UserInfo) {
 
 const showClearExpiredConfirm = ref(false)
 const clearExpiredLoading = ref(false)
+const clearCriteria = ref({
+  expired: true,
+  inactiveDays7: false,
+  notRunning: false,
+})
 
 async function clearExpiredUsers() {
+  if (!clearCriteria.value.expired && !clearCriteria.value.inactiveDays7 && !clearCriteria.value.notRunning) {
+    toast.warning('请至少选择一个清理条件')
+    return
+  }
   clearExpiredLoading.value = true
   try {
-    const result = await userStore.clearExpiredUsers()
+    const result = await userStore.clearExpiredUsers({
+      expired: clearCriteria.value.expired,
+      inactiveDays: clearCriteria.value.inactiveDays7 ? 7 : 0,
+      notRunning: clearCriteria.value.notRunning,
+    })
     if (result.ok) {
-      toast.success(`成功清理 ${result.deletedCount} 个到期用户`)
+      toast.success(result.deletedCount > 0
+        ? `成功清理 ${result.deletedCount} 个用户：${(result.deletedUsers || []).join('、')}`
+        : '没有符合条件的用户需要清理')
       showClearExpiredConfirm.value = false
       await fetchUsers()
     }
@@ -1777,6 +1795,9 @@ onUnmounted(() => {
                         注册时间
                       </th>
                       <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+                        最后登录
+                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
                         到期时间
                       </th>
                       <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-gray-400">
@@ -1822,6 +1843,9 @@ onUnmounted(() => {
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-500 font-mono dark:text-gray-400">
                         {{ user.createdAt ? formatDate(user.createdAt) : '-' }}
+                      </td>
+                      <td class="whitespace-nowrap px-4 py-3 text-xs font-mono" :class="user.lastLoginAt ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 italic'">
+                        {{ user.lastLoginAt ? formatDate(user.lastLoginAt) : '从未登录' }}
                       </td>
                       <td class="whitespace-nowrap px-4 py-3 text-sm font-mono" :class="isExpired(user.card) ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-700 dark:text-gray-300'">
                         <span v-if="user.role === 'admin' || user.card?.days === -1 || (!user.card?.expiresAt && user.card)" class="inline-flex items-center gap-1 font-semibold text-purple-600 dark:text-purple-400">
@@ -1923,6 +1947,7 @@ onUnmounted(() => {
                   <div class="flex items-center gap-2.5">
                     <span>配额: <b class="text-gray-800 dark:text-white font-mono">{{ user.role === 'admin' ? '无限' : `${user.accountLimit || 2}个` }}</b></span>
                     <span>注册: <b class="text-gray-800 dark:text-white font-mono">{{ user.createdAt ? formatDate(user.createdAt) : '-' }}</b></span>
+                    <span>最后登录: <b class="text-gray-800 dark:text-white font-mono">{{ user.lastLoginAt ? formatDate(user.lastLoginAt) : '从未' }}</b></span>
                   </div>
                   <div class="flex items-center gap-1">
                     <span class="text-gray-400">到期:</span>
@@ -2070,37 +2095,61 @@ onUnmounted(() => {
       </div>
     </Teleport>
 
-          <!-- 清理到期用户确认弹窗 -->
-          <div
-            v-if="showClearExpiredConfirm"
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
-            @click.self="showClearExpiredConfirm = false"
-          >
-            <div class="max-w-md w-[95vw] rounded-lg bg-white p-5 dark:bg-gray-800 sm:w-full" @click.stop>
-              <h2 class="mb-4 text-lg text-gray-900 font-bold dark:text-white">
-                确认清理到期用户
-              </h2>
-              <p class="mb-4 text-gray-600 dark:text-gray-300">
-                确定要清理所有到期的用户吗？此操作将删除所有已过期的普通用户账号，且不可恢复！
-              </p>
-              <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                管理员账号不会被删除
-              </p>
-              <div class="flex justify-end space-x-3">
-                <BaseButton variant="secondary" size="sm" @click="showClearExpiredConfirm = false">
-                  取消
-                </BaseButton>
-                <BaseButton
-                  variant="danger"
-                  size="sm"
-                  :loading="clearExpiredLoading"
-                  @click="clearExpiredUsers"
+          <!-- 清理用户弹窗（可勾选清理条件） -->
+          <Teleport to="body">
+            <div
+              v-if="showClearExpiredConfirm"
+              class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+              @click.self="showClearExpiredConfirm = false"
+            >
+              <div class="relative max-w-md w-[95vw] rounded-lg bg-white p-5 dark:bg-gray-800 sm:w-full" @click.stop>
+                <!-- 右上角关闭 -->
+                <button
+                  class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                  title="关闭"
+                  @click="showClearExpiredConfirm = false"
                 >
-                  确认清理
-                </BaseButton>
+                  <span class="i-carbon-close text-lg" />
+                </button>
+                <h2 class="mb-4 pr-8 text-lg text-gray-900 font-bold dark:text-white">
+                  清理用户
+                </h2>
+                <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+                  勾选要清理的用户类型（可多选），删除后不可恢复；管理员账号不会被删除。
+                </p>
+                <div class="mb-4 space-y-2.5">
+                  <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <input v-model="clearCriteria.expired" type="checkbox" class="h-4 w-4 accent-red-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">已到期账户</span>
+                    <span class="ml-auto text-xs text-gray-400">卡密已过期的用户</span>
+                  </label>
+                  <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <input v-model="clearCriteria.inactiveDays7" type="checkbox" class="h-4 w-4 accent-red-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">超过 7 天未登录</span>
+                    <span class="ml-auto text-xs text-gray-400">按最后登录时间判定</span>
+                  </label>
+                  <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    <input v-model="clearCriteria.notRunning" type="checkbox" class="h-4 w-4 accent-red-500">
+                    <span class="text-sm text-gray-700 dark:text-gray-200">未挂机账户</span>
+                    <span class="ml-auto text-xs text-gray-400">名下无在线运行账号</span>
+                  </label>
+                </div>
+                <div class="flex justify-end space-x-3">
+                  <BaseButton variant="secondary" size="sm" @click="showClearExpiredConfirm = false">
+                    取消
+                  </BaseButton>
+                  <BaseButton
+                    variant="danger"
+                    size="sm"
+                    :loading="clearExpiredLoading"
+                    @click="clearExpiredUsers"
+                  >
+                    确认清理
+                  </BaseButton>
+                </div>
               </div>
             </div>
-          </div>
+          </Teleport>
         </div>
 
         <!-- 系统配置管理模块 (优雅子Tab分流模式) -->

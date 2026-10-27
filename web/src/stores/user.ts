@@ -185,8 +185,8 @@ export const useUserStore = defineStore('user', () => {
     return res.data
   }
 
-  async function clearExpiredUsers() {
-    const res = await api.post('/api/admin/users/clear-expired')
+  async function clearExpiredUsers(criteria?: { expired?: boolean, inactiveDays?: number, notRunning?: boolean }) {
+    const res = await api.post('/api/admin/users/clear-expired', criteria || {})
     return res.data
   }
 
