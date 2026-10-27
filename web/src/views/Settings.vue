@@ -287,10 +287,15 @@ async function saveAutoCodeRefreshSettings() {
   }
 }
 
-function openAccountSettings(account: any) {
+async function openAccountSettings(account: any) {
   if (account) {
+    const isSameAccount = String(account.id) === String(currentAccountId.value || '')
     selectAccount(account)
+    // 同一账号重复打开设置时 watch 不会触发，必须手动重载，否则策略预览会一直停留在加载中
     resetStrategyState()
+    if (isSameAccount) {
+      await loadStrategyData()
+    }
   }
   openDrawer('account-config', account)
 }
