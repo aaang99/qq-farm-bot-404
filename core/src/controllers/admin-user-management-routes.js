@@ -163,7 +163,7 @@ function registerAdminUserManagementRoutes({
       let options;
       if (hasCriteria) {
         const runningUsernames = new Set();
-        if (body.notRunning) {
+        {
           const allAccounts = typeof getAccountsForUser === "function" ? getAccountsForUser() : [];
           for (const acc of allAccounts) {
             let isRunning = false;

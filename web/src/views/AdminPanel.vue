@@ -2126,7 +2126,7 @@ onUnmounted(() => {
                   <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <input v-model="clearCriteria.inactiveDays7" type="checkbox" class="h-4 w-4 accent-red-500">
                     <span class="text-sm text-gray-700 dark:text-gray-200">超过 7 天未登录</span>
-                    <span class="ml-auto text-xs text-gray-400">按最后登录时间判定</span>
+                    <span class="ml-auto text-xs text-gray-400">名下有在线挂机账号的不清理</span>
                   </label>
                   <label class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-gray-200 px-3 py-2.5 transition dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     <input v-model="clearCriteria.notRunning" type="checkbox" class="h-4 w-4 accent-red-500">

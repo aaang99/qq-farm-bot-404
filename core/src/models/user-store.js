@@ -980,9 +980,11 @@ function clearExpiredUsers(options) {
         if (cleanupExpired && user.card && user.card.expiresAt && user.card.expiresAt < now) {
             matched = true;
         }
-        // 超过 N 天未登录（无登录记录的旧用户视为未知，保留不动）
+        // 超过 N 天未登录，且名下无在线挂机账号（有账号在挂说明还在用，只是没登录网站）
         if (!matched && inactiveDays > 0 && user.lastLoginAt && (now - user.lastLoginAt) > inactiveDays * 86400000) {
-            matched = true;
+            if (!isUserRunning || isUserRunning(user.username) === false) {
+                matched = true;
+            }
         }
         // 未挂机账户（名下无任何在线运行账号）
         if (!matched && notRunningOnly && isUserRunning && isUserRunning(user.username) === false) {
