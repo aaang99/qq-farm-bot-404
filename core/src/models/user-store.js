@@ -986,9 +986,22 @@ function saveCardClaimRecords() {
     }
 }
 
+function getAvailableFreeCardCount() {
+    loadCards();
+    return cards.filter(c =>
+        c.isFree === true &&
+        c.type === 'time' &&
+        !c.usedBy &&
+        c.enabled &&
+        c.exhausted !== true
+    ).length;
+}
+
 function getCardClaimStatus() {
     loadCardClaimRecords();
-    return { enabled: cardClaimEnabled };
+    // 后台开关关闭，或库存里没有可领取的免费卡时，前端不应再展示领取入口
+    const availableCount = getAvailableFreeCardCount();
+    return { enabled: cardClaimEnabled && availableCount > 0, availableCount };
 }
 
 function setCardClaimStatus(enabled) {

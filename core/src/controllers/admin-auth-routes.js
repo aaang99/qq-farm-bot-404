@@ -258,7 +258,7 @@ function registerAdminAuthRoutes({ app, createAdminSession, updateAdminSessions,
   app.get("/api/card-claim/status", (_req, res) => {
     try {
       const status = userStore.getCardClaimStatus();
-      res.json({ ok: true, enabled: status.enabled });
+      res.json({ ok: true, enabled: status.enabled, availableCount: status.availableCount || 0 });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
