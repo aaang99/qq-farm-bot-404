@@ -645,13 +645,13 @@ onMounted(async () => {
                   <h3 class="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100">
                     {{ drawerActiveTab === 'account-config' ? '账号功能配置' : '掉线通知配置' }}
                   </h3>
-                  <!-- 微信账号专属：自动刷新code 灰色小字 + 胶囊开关 -->
+                  <!-- 微信账号专属：掉线自动重连 灰色小字 + 胶囊开关 -->
                   <div
                     v-if="drawerActiveTab === 'account-config' && isCurrentAccountWx"
                     class="inline-flex items-center gap-1.5 ml-1 sm:ml-2 px-2 py-0.5 rounded-full bg-gray-100/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 shadow-inner"
                     title="开启后按设定间隔自动获取新 Code 并重启账号，保障长期运行不掉线"
                   >
-                    <span class="text-[11px] text-gray-400 font-medium select-none">自动刷新code</span>
+                    <span class="text-[11px] text-gray-400 font-medium select-none">掉线自动重连</span>
                     <input
                       type="checkbox"
                       :checked="localAutoCodeRefresh.enabled"
