@@ -141,13 +141,9 @@ function createAutoCodeRefreshService(deps) {
       }, { preventOverlap: true });
     }
 
-    if (!cfg.enabled) return;
-
-    scheduler.setIntervalTask(taskName, cfg.intervalMinutes * 60000, () => {
-      refreshAccountCode(accountId, 'timer');
-    }, { preventOverlap: true });
-
-    log('系统', `自动刷新 Code 已启用: ${  account.name  }，间隔 ${  cfg.intervalMinutes  } 分钟`, {
+    // 不再按固定间隔无条件重登；仅在掉线（ws_400/kickout/ws_reconnect_failed）时
+    // 由 worker-manager 调用 refreshAccountCode/scheduleRelogin 用新 Code 重登。
+    log('系统', `自动刷新 Code 已启用: ${  account.name  }（掉线自动重登模式，微信凭证每 30 分钟保活）`, {
       accountId: String(accountId),
       accountName: account.name,
     });
@@ -182,10 +178,12 @@ function createAutoCodeRefreshService(deps) {
     }
     const taskName = `relogin_${String(accountId || '')}`;
     scheduler.clear(taskName);
-    scheduler.setTimeoutTask(taskName, cfg.intervalMinutes * 60000, () => {
+    // 掉线后快速重登：90 秒等待网络抖动恢复，再取新 Code 重登
+    const reloginDelayMs = 90 * 1000;
+    scheduler.setTimeoutTask(taskName, reloginDelayMs, () => {
       refreshAccountCode(accountId, reason);
     });
-    log('系统', `账号 ${account.name} 将在 ${cfg.intervalMinutes} 分钟后自动刷新凭证并重登`, {
+    log('系统', `账号 ${account.name} 已掉线，将在 90 秒后自动刷新凭证并重登`, {
       accountId: String(accountId), accountName: account.name, reason,
     });
     return true;

@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile
 COPY core ./core
 COPY web ./web
 
-RUN pnpm -C web exec vite build
+RUN NODE_OPTIONS=--max-old-space-size=1024 pnpm -C web exec vite build
 
 # ==========================================
 FROM docker.1ms.run/library/node:20-alpine AS prod-deps
