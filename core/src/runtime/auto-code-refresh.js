@@ -28,7 +28,7 @@ function createAutoCodeRefreshService(deps) {
   }
 
   function isRecoveryReason(reason) {
-    return ['ws_400', 'kickout:', 'ws_reconnect_failed:', 'refresh_failed']
+    return ['ws_400', 'kickout:', 'ws_reconnect_failed:', 'refresh_failed', 'worker_exit']
       .some(prefix => String(reason || '').includes(prefix));
   }
 

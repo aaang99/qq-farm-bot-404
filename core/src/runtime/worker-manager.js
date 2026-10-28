@@ -348,6 +348,10 @@ function createWorkerManager(deps) {
                 const reason = `worker_exit:code=${code == null ? 'unknown' : code},signal=${signal || 'none'}`;
                 notifyAbnormalOffline(account.id, wrk, reason, 'worker_unexpected_exit',
                     `账号 ${displayName} 异常掉线（Worker 进程意外退出）`);
+                // 进程异常退出也纳入自动重登（用户主动停止时 stopping=true 不会走到这里）
+                if (typeof scheduleAutoRelogin === 'function') {
+                    scheduleAutoRelogin(account.id, reason);
+                }
             }
 
             scheduler.clear(`force_kill_${  account.id}`);
