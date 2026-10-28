@@ -13,6 +13,8 @@ function createAutoCodeRefreshService(deps) {
 
   const scheduler = createScheduler('auto_code_refresh');
   const recoveryState = new Map();
+  // 保活失败提醒计数：凭证失效时只提醒 3 次，避免每 30 分钟重复刷屏
+  const keepaliveFailCounts = new Map();
   const MAX_DAILY_RECOVERIES = 8;
   const MAX_CONSECUTIVE_FAILURES = 3;
 
@@ -133,10 +135,20 @@ function createAutoCodeRefreshService(deps) {
         const latest = findAccount(accountId);
         if (!latest) return;
         const result = await wxLoginAdapter.keepWxCredentialAlive(latest);
+        const failKey = String(accountId);
         if (!result.Success) {
-          log('错误', `微信凭证保活失败: ${latest.name} - ${result.Message || '未知错误'}`, {
-            accountId: String(accountId), accountName: latest.name,
-          });
+          const fails = (keepaliveFailCounts.get(failKey) || 0) + 1;
+          keepaliveFailCounts.set(failKey, fails);
+          // 凭证已失效无法自动恢复，重复提醒无意义；只提醒前 3 次，第 3 次起提示重新扫码
+          if (fails <= 3) {
+            const hint = '微信凭证已失效，无法自动续期，请重新扫码登录';
+            log('错误', `微信凭证保活失败: ${latest.name} - ${hint}`, {
+              accountId: String(accountId), accountName: latest.name,
+              detail: result.Message || '未知错误', failCount: fails,
+            });
+          }
+        } else {
+          keepaliveFailCounts.delete(failKey);
         }
       }, { preventOverlap: true });
     }
