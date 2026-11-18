@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package gamepb.sharepb;
+
+import "corepb.proto";
+
+// ============ 分享服务 ============
+
+// --- 检查是否可以分享 ---
+message CheckCanShareRequest {}
+
+message CheckCanShareReply {
+    bool can_share = 1;  // 是否可以分享
+}
+
+// --- 报告分享 ---
+message ReportShareRequest {
+    int32 field_1 = 1;  // 牧场每日分享=102 / 任务翻倍=103
+    int32 field_4 = 4;  // 牧场=2101 / 任务=2104 / 农场每日=42
+}
+
+message ReportShareReply {
+    bytes result = 1;
+}
+
+// --- 领取分享奖励 ---
+message ClaimShareRewardRequest {
+    bool field_1 = 1;
+}
+
+message ClaimShareRewardReply {
+    repeated corepb.Item items = 1;
+}

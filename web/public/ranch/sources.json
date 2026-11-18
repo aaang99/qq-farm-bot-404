@@ -1,0 +1,14 @@
+{
+  "files": [
+    {
+      "file": "pasture-background.webp",
+      "assetPath": "res/texture/scene/img_fg",
+      "bundle": "mcRes",
+      "sourceClient": "1112386029_3_be3b19f45e0f8b42ef5134e45489da69",
+      "url": "https://cdn-resource.nqf.qq.com/release/remote/mcRes/native/0f/0f7b2fb1-3547-4a08-b20e-e879c886b498.985a0.png",
+      "sourceSha256": "24d3134097cdef34ae59a34e21def6b6887ab4ca65b60407a04d25683de4a02c",
+      "sha256": "b59585a1957e5c5146994a9c7a3d3bedfbe62cfcf2023565743d011fb7c84265",
+      "transform": "proportional resize to max 2400px; WebP quality 88"
+    }
+  ]
+}
