@@ -14,20 +14,24 @@ message CheckCanShareReply {
 }
 
 // --- 报告分享 ---
+// 农场每日分享：field_1 = 1（等价旧版 shared = true）
+// 牧场每日分享：field_1 = 102
+// 服务端对多余字段会整体拒绝，因此只发送 field_1
 message ReportShareRequest {
-    int32 field_1 = 1;  // 牧场每日分享=102 / 任务翻倍=103
-    int32 field_4 = 4;  // 牧场=2101 / 任务=2104 / 农场每日=42
+    int32 field_1 = 1;
 }
 
 message ReportShareReply {
-    bytes result = 1;
+    bool success = 1;  // 是否成功
 }
 
 // --- 领取分享奖励 ---
 message ClaimShareRewardRequest {
-    bool field_1 = 1;
+    bool claimed = 1;  // 请求领取
 }
 
 message ClaimShareRewardReply {
-    repeated corepb.Item items = 1;
+    bool success = 1;           // 是否成功
+    bool has_reward = 2;        // 是否有奖励
+    repeated corepb.Item items = 3;  // 奖励物品列表
 }

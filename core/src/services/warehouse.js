@@ -29,6 +29,17 @@ const { updateStatusGold } = require('./status');
 // ---- 常量 ----
 
 // 批量出售大小
+// 场景事务被取消 / 会话失效：属于整轮不可继续的错误，不做逐项重试
+function isSessionAbort(err) {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '');
+  return code === 'SCENE_CANCELLED'
+    || code === 'SCENE_BACKOFF'
+    || code === 'SCENE_LOCKED'
+    || code === 'SCENE_LOGIN_UNSUPPORTED'
+    || /场景事务已结束|场景切换失败|账号连接已重置/.test(msg);
+}
+
 const SELL_BATCH_SIZE = 15;
 
 // 化肥容器上限（小时）
@@ -679,6 +690,7 @@ async function sellAllFruits() {
         if (gain > 0) totalGoldFromReply += gain;
         batch.forEach(recordSoldFruit);
       } catch (err) {
+        if (isSessionAbort(err)) throw err;
         // 批量失败，逐个重试
         logWarn('仓库', `批量出售失败，改为逐个重试: ${err.message}`);
         for (const fruit of batch) {
@@ -690,6 +702,8 @@ async function sellAllFruits() {
             if (gain > 0) totalGoldFromReply += gain;
             recordSoldFruit(fruit);
           } catch (innerErr) {
+            // 场景事务/连接被重置属于整轮失效，逐项重试只会刷屏，直接抛出中止
+            if (isSessionAbort(innerErr)) throw innerErr;
             const fid = toNum(fruit.id);
             const fcount = toNum(fruit.count);
             skippedKindCount += 1;

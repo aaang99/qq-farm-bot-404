@@ -118,9 +118,10 @@ async function checkCanShare() {
 }
 
 async function reportShare() {
-  // 抓包确认：农场每日分享 = field_1:1 + field_4:42（旧版 shared:true 字段已不存在）
+  // 农场每日分享：仅发送 field_1=1（等价旧版 shared=true）。
+  // 服务端对多余字段会整体拒绝（code=1000020），因此不携带 field_4。
   const request = types.ReportShareRequest.encode(
-    types.ReportShareRequest.create({ field_1: 1, field_4: 42 })
+    types.ReportShareRequest.create({ field_1: 1 })
   ).finish();
   const { body } = await sendMsgAsync('gamepb.sharepb.ShareService', 'ReportShare', request);
   return types.ReportShareReply.decode(body);

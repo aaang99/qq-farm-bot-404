@@ -53,28 +53,16 @@ async function checkCanShare() {
 }
 
 async function reportShare() {
-  // 服务端对多余字段会整体拒绝（code=1000020），按「最少字段」原则逐个尝试：
-  // 1) 仅 field_1 2) field_1+field_4。命中后缓存可用组合，避免每轮重复试探。
-  const candidates = shareFieldMode === 'both'
-    ? [{ field_1: SHARE_ID, field_4: DOC_ID }, { field_1: SHARE_ID }]
-    : [{ field_1: SHARE_ID }];
-  let lastErr = null;
-  for (const payload of candidates) {
-    try {
-      const req = types.ReportShareRequest.encode(types.ReportShareRequest.create(payload)).finish();
-      const { body } = await sendMsgAsync('gamepb.sharepb.ShareService', 'ReportShare', req);
-      shareFieldMode = payload.field_4 ? 'both' : 'onlyId';
-      return body;
-    }
-    catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr || new Error('ReportShare 全部参数组合均失败');
+  // 服务端对多余字段会整体拒绝（code=1000020），只发送 field_1
+  const req = types.ReportShareRequest.encode(
+    types.ReportShareRequest.create({ field_1: SHARE_ID })
+  ).finish();
+  const { body } = await sendMsgAsync('gamepb.sharepb.ShareService', 'ReportShare', req);
+  return body;
 }
 
 async function claimShareReward() {
-  const req = types.ClaimShareRewardRequest.encode(types.ClaimShareRewardRequest.create({ field_1: true })).finish();
+  const req = types.ClaimShareRewardRequest.encode(types.ClaimShareRewardRequest.create({ claimed: true })).finish();
   const { body } = await sendMsgAsync('gamepb.sharepb.ShareService', 'ClaimShareReward', req);
   if (!body || !body.length) return { items: [] };
   const reply = types.ClaimShareRewardReply.decode(body);

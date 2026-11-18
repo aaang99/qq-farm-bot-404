@@ -611,8 +611,8 @@ onMounted(async () => {
         @close="modalVisible = false"
         @cancel="modalVisible = false"
       />
-      <div v-if="showDrawerModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-3 sm:p-5 backdrop-blur-sm" @click.self="closeDrawer">
-        <div class="max-h-[88vh] max-w-2xl w-full flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-white/70 dark:border-white/10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl animate-scale-in">
+      <div v-if="showDrawerModal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-3 sm:p-5" @click.self="closeDrawer">
+        <div class="max-h-[88vh] max-w-2xl w-full flex flex-col overflow-hidden rounded-2xl shadow-2xl border border-white/70 dark:border-white/10 bg-white dark:bg-gray-900 animate-scale-in">
           <!-- 浮层头部 (单一标题 + 右上角关闭按钮) -->
           <div class="flex items-center justify-between border-b border-gray-100/80 px-4 py-3 sm:px-5 dark:border-gray-800">
             <div class="flex items-center gap-2.5">
