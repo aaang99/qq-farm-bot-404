@@ -4,7 +4,14 @@ const { version } = require("../../package.json");
 const { getRuntimeConfig } = require("../config/config");
 const { getSchedulerRegistrySnapshot } = require("../services/scheduler");
 
-const CHANGELOG_URL = "https://gitee.com/xlzcandy/qq-classic-farm-update-log/raw/master/README.md";
+// 更新日志为内置静态内容，不依赖任何站外地址
+const CHANGELOG_TEXT = [
+  "# QQ Farm Bot 更新日志",
+  "",
+  "本仓库为存档版本，更新日志随仓库 docs/CHANGELOG.md 一并存放，",
+  "可通过仓库页面查看历史变更。",
+].join("\n");
+
 const SCHEDULER_UNSUPPORTED_MESSAGE = "DataProvider does not support scheduler status";
 
 function registerAdminPublicInfoRoutes({
@@ -29,12 +36,7 @@ function registerAdminPublicInfoRoutes({
 
   app.get("/api/changelog", async (req, res) => {
     try {
-      const response = await fetch(CHANGELOG_URL);
-      if (!response.ok)
-        return res.status(500).json({ ok: false, error: "获取更新日志失败" });
-
-      const data = await response.text();
-      res.json({ ok: true, data });
+      res.json({ ok: true, data: CHANGELOG_TEXT });
     }
     catch (error) {
       res.status(500).json({ ok: false, error: error.message });
